@@ -1,0 +1,6 @@
+{
+  "name": "唯花不落",
+  "description": "An elegant, interactive personal blog and portfolio platform featuring dynamic content search, markdown editing, and personalized theme accents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
