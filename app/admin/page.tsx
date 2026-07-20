@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkHtml from 'remark-html';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -28,11 +31,32 @@ export default function AdminPage() {
   const [mood, setMood] = useState('思考');
   const [location, setLocation] = useState('江西省 南昌市');
   const [content, setContent] = useState('');
+  const [previewHtml, setPreviewHtml] = useState('');
 
   // 媒体管理
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // 实时编译 Markdown
+  useEffect(() => {
+    if (activeTab === 'moment') return; // 说说不需要复杂的 md 渲染
+    
+    const processMarkdown = async () => {
+      try {
+        const file = await unified()
+          .use(remarkParse)
+          .use(remarkHtml)
+          .process(content || '');
+        setPreviewHtml(String(file));
+      } catch (error) {
+        console.error('Markdown 解析失败:', error);
+      }
+    };
+    
+    const timer = setTimeout(() => processMarkdown(), 300);
+    return () => clearTimeout(timer);
+  }, [content, activeTab]);
 
   // 自动淡出提示信息
   useEffect(() => {
@@ -446,28 +470,49 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* 手写核心 Markdown 内容输入区域 */}
+              {/* 手写核心 Markdown 内容输入区域及实时预览 */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <FileText size={14} /> 内容正文
+                    <FileText size={14} /> {activeTab !== 'moment' ? '内容正文与实时预览' : '内容正文'}
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium font-mono">
                     {activeTab !== 'moment' ? '支持标准 Markdown 语法' : '输入日常想说的话'}
                   </span>
                 </label>
-                <textarea
-                  required
-                  placeholder={
-                    activeTab === 'moment' 
-                      ? "今天发生了什么有趣的事？在这里记下来吧，说说能像朋友圈那样瞬间记录你所有的温度..." 
-                      : "在这里挥洒你的汗水与墨水吧！\n\n## 甚至可以用 Markdown 语法噢喵呜~\n- 点两下回车开辟新天地。\n- 输入你的 GROMACS 模拟经验，或者泰拉大陆的源石病机制研究..."
-                  }
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={activeTab === 'moment' ? 6 : 12}
-                  className="w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-2xl p-4 md:p-6 text-xs md:text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all leading-relaxed font-sans scrollbar-thin"
-                />
+                {activeTab !== 'moment' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <textarea
+                      required
+                      placeholder="在这里挥洒你的汗水与墨水吧！\n\n## 甚至可以用 Markdown 语法噢喵呜~\n- 点两下回车开辟新天地。\n- 输入你的 GROMACS 模拟经验，或者泰拉大陆的源石病机制研究..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      rows={12}
+                      className="w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-2xl p-4 md:p-6 text-xs md:text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all leading-relaxed font-sans scrollbar-thin resize-none"
+                    />
+                    <div className="w-full h-full min-h-[300px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-2xl p-4 md:p-6 text-xs md:text-sm text-slate-800 dark:text-white overflow-y-auto leading-relaxed font-sans scrollbar-thin">
+                      {content ? (
+                        <div 
+                          className="prose dark:prose-invert prose-sm max-w-none prose-indigo break-words" 
+                          dangerouslySetInnerHTML={{ __html: previewHtml }} 
+                        />
+                      ) : (
+                        <div className="text-slate-400/80 italic flex items-center justify-center h-full w-full select-none">
+                          在此实时预览 Markdown 渲染效果...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <textarea
+                    required
+                    placeholder="今天发生了什么有趣的事？在这里记下来吧，说说能像朋友圈那样瞬间记录你所有的温度..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    rows={6}
+                    className="w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-2xl p-4 md:p-6 text-xs md:text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all leading-relaxed font-sans scrollbar-thin"
+                  />
+                )}
               </div>
 
               {/* 简易安全令牌（作为发布防刷屏的安全门面） */}
