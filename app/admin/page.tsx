@@ -110,6 +110,7 @@ export default function AdminPage() {
       try {
         const res = await fetch('/api/admin/upload', {
           method: 'POST',
+          headers: { 'X-Admin-Passkey': passkey },
           body: formData,
         });
 
@@ -176,7 +177,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/publish', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Passkey': passkey },
         body: JSON.stringify(payload),
       });
 

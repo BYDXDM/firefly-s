@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
 
 export async function POST(req: Request) {
   try {
+    // 🔐 管理后台鉴权
+    if (!isAuthorized(req)) return unauthorizedResponse();
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     if (!file) {
