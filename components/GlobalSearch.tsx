@@ -109,7 +109,7 @@ export default function GlobalSearch() {
       {/* 唤起按钮（右下角悬浮） */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-indigo-500/90 hover:bg-indigo-600 text-white pl-3.5 pr-4 py-2.5 shadow-lg shadow-indigo-500/30 backdrop-blur transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full bg-indigo-500/90 hover:bg-indigo-600 text-white pl-3.5 pr-4 py-2.5 shadow-lg shadow-indigo-500/30 backdrop-blur transition-all hover:scale-105 active:scale-95"
         aria-label="搜索"
       >
         <Search size={16} />
