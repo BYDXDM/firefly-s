@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Gemini API Key missing on server" }, { status: 500 });
     }
 
-    const modelId = "gemini-3.5-flash"; 
+    const modelId = siteConfig.geminiConfig?.modelId || "gemini-2.5-flash-lite";
     const systemPrompt = siteConfig.geminiConfig?.systemPrompt || "你是一只可爱的猫咪，叫煤球。";
 
     const response = await ai.models.generateContent({
@@ -47,5 +47,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ status: "Ready", model: "gemini-3.5-flash" });
+  return NextResponse.json({ status: "Ready", model: siteConfig.geminiConfig?.modelId || "gemini-2.5-flash-lite" });
 }
