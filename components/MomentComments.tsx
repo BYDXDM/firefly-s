@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-
-
+import { usePathname } from 'next/navigation';
 import { siteConfig } from '../siteConfig';
 
 interface MomentCommentsProps {
@@ -11,6 +10,7 @@ interface MomentCommentsProps {
 
 export default function MomentComments({ id }: MomentCommentsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!containerRef.current) return;

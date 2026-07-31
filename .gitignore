@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+node_modules_old/
+**/node_modules*
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,9 +16,14 @@
 /coverage
 
 # next.js
-# /out/
-# production
-# /build
+/.next/
+/out/
+
+# build logs & temp
+*.log
+build*.js
+fix*.js
+metadata.json
 
 # misc
 .DS_Store
