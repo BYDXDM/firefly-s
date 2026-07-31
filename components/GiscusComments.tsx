@@ -14,12 +14,12 @@ export default function GiscusComments({
 }) {
   const pathname = usePathname();
 
-  const { repo, repoId } = siteConfig.giscusConfig || ({} as any);
+  const { repo, repoId, category, categoryId } = siteConfig.giscusConfig || ({} as any);
 
   // 用页面路径做唯一映射（不同页面自动对应不同 discussion）
   const term = pageId || pathname.replace(/\/$/, '') || '/';
 
-  if (!repo || !repoId) {
+  if (!repo || !repoId || !categoryId) {
     return (
       <div className="w-full rounded-2xl border border-indigo-200/40 dark:border-indigo-400/20 bg-indigo-500/5 dark:bg-indigo-400/5 px-6 py-8 text-center">
         <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
@@ -37,6 +37,8 @@ export default function GiscusComments({
       <Giscus
         repo={repo as `${string}/${string}`}
         repoId={repoId}
+        category={category}
+        categoryId={categoryId}
         mapping="specific"
         term={term}
         theme="preferred_color_scheme"
