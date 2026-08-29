@@ -47,6 +47,12 @@ export default function CyberCat() {
   const petLines = [
     "诶嘿嘿…被Sensei摸头的话，爱丽丝会充满干劲的！攻击力暂时提升！",
     "邦吧咔邦！", // 游戏内语音台词
+    "好耶！爱丽丝的MP全满了！",
+    "成就解锁：被Sensei摸头！获得buff：干劲满满！",
+    "嘿嘿…这一定是隐藏任务的触发条件！",
+    "暴击！摸头的威力产生了暴击！",
+    "感谢支援！英雄的HP正在恢复中……",
+    "再、再摸下去的话，爱丽丝要过载了啦！",
   ];
   const handlePetCat = () => {
     if (isDraggingRef.current) return;
