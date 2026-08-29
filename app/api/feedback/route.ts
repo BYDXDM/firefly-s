@@ -51,6 +51,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     console.error('保存建议失败:', error);
+    const code = (error as NodeJS.ErrnoException)?.code;
+    if (code === 'EROFS') {
+      return NextResponse.json(
+        { error: '建议箱暂未开通云端存储，请联系站长配置 GITHUB_TOKEN' },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ error: '服务器开小差了，稍后再试' }, { status: 500 });
   }
 }

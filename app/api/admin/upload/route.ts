@@ -54,6 +54,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: fileUrl, mode: 'local' });
   } catch (error: unknown) {
     console.error('上传失败:', error);
+    const code = (error as NodeJS.ErrnoException)?.code;
+    if (code === 'EROFS') {
+      return NextResponse.json(
+        { error: '服务器文件系统只读：请配置 GITHUB_TOKEN 环境变量以启用云端上传，配置后重新部署即可' },
+        { status: 500 }
+      );
+    }
     const message = error instanceof Error ? error.message : '上传失败';
     return NextResponse.json({ error: message || '上传失败' }, { status: 500 });
   }

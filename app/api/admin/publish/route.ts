@@ -118,8 +118,16 @@ ${content.trim()}
     fs.writeFileSync(filePath, fileContent, 'utf8');
 
     return NextResponse.json({ success: true, fileName, type, mode: 'local' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('保存失败:', error);
-    return NextResponse.json({ error: error.message || '保存失败' }, { status: 500 });
+    const code = (error as NodeJS.ErrnoException)?.code;
+    if (code === 'EROFS') {
+      return NextResponse.json(
+        { error: '服务器文件系统只读：请在部署平台配置 GITHUB_TOKEN 环境变量以启用云端发布，配置后重新部署即可' },
+        { status: 500 }
+      );
+    }
+    const message = error instanceof Error ? error.message : '保存失败';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
