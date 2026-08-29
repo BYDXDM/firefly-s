@@ -186,7 +186,13 @@ export default function AdminPage() {
         throw new Error(errorData.error || '发布失败');
       }
 
-      setNotification({ type: 'success', text: '恭喜！发布成功，正在传送至对应星域...' });
+      const result = await res.json().catch(() => ({}));
+      setNotification({
+        type: 'success',
+        text: result.mode === 'github'
+          ? '已提交到仓库，站点将在 1-2 分钟内自动重新部署后生效喵～'
+          : '恭喜！发布成功，正在传送至对应星域...',
+      });
 
       // 重置表单
       setTitle('');
@@ -196,12 +202,14 @@ export default function AdminPage() {
       setContent('');
       setUploadedImages([]);
 
-      // 1.5秒后自动跳转
-      setTimeout(() => {
-        if (activeTab === 'post') router.push('/timeline');
-        else if (activeTab === 'moment') router.push('/moments');
-        else if (activeTab === 'chatter') router.push('/chatter');
-      }, 1500);
+      // 1.5秒后自动跳转（GitHub 模式下内容需重新部署才生效，留在原地让用户看到提示）
+      if (result.mode !== 'github') {
+        setTimeout(() => {
+          if (activeTab === 'post') router.push('/timeline');
+          else if (activeTab === 'moment') router.push('/moments');
+          else if (activeTab === 'chatter') router.push('/chatter');
+        }, 1500);
+      }
 
     } catch (err: any) {
       console.error('发布失败:', err);

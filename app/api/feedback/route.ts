@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '建议内容太短了，至少写两个字吧' }, { status: 400 });
     }
 
-    const id = saveFeedback({ nickname, contact, type, content });
+    const id = await saveFeedback({ nickname, contact, type, content });
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     console.error('保存建议失败:', error);
@@ -57,12 +57,13 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) return unauthorizedResponse();
-  return NextResponse.json({ items: getFeedbackList() });
+  const items = await getFeedbackList();
+  return NextResponse.json({ items });
 }
 
 export async function DELETE(req: NextRequest) {
   if (!isAuthorized(req)) return unauthorizedResponse();
   const id = req.nextUrl.searchParams.get('id') || '';
-  const ok = deleteFeedback(id);
+  const ok = await deleteFeedback(id);
   return NextResponse.json({ ok }, { status: ok ? 200 : 400 });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
+import { getGithubConfig, githubCommitFile } from '../../../../lib/github';
 
 export async function POST(req: Request) {
   try {
@@ -99,9 +100,24 @@ ${content.trim()}
     if (!filePath.startsWith(targetDir + path.sep) || fileName.includes('..')) {
       return NextResponse.json({ error: '文件名非法' }, { status: 400 });
     }
+
+    // 线上（Vercel 等只读文件系统）：提交到 GitHub 仓库，push 自动触发重新部署
+    const ghCfg = getGithubConfig();
+    if (ghCfg) {
+      const repoDir = type === 'post' ? 'posts' : type === 'chatter' ? 'chatters' : 'moments';
+      await githubCommitFile(ghCfg, `${repoDir}/${fileName}`, fileContent, `content: 发布${type === 'post' ? '文章' : type === 'chatter' ? '杂谈' : '说说'} ${fileName}`);
+      return NextResponse.json({
+        success: true,
+        fileName,
+        type,
+        mode: 'github',
+        message: '已提交到仓库，站点将在 1-2 分钟内自动重新部署后生效',
+      });
+    }
+
     fs.writeFileSync(filePath, fileContent, 'utf8');
 
-    return NextResponse.json({ success: true, fileName, type });
+    return NextResponse.json({ success: true, fileName, type, mode: 'local' });
   } catch (error: any) {
     console.error('保存失败:', error);
     return NextResponse.json({ error: error.message || '保存失败' }, { status: 500 });

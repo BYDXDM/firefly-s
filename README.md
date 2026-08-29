@@ -33,11 +33,15 @@ npm run lint   # 代码检查
 
 | 变量 | 作用 | 缺省行为 |
 | --- | --- | --- |
+| `GITHUB_TOKEN` | **线上部署必配**：后台发文/传图/建议箱通过 GitHub API 提交到仓库（Git 即 CMS），push 自动触发重新部署 | 写本地文件（仅本地开发可用） |
+| `GITHUB_REPO` | 目标仓库，默认 `BYDXDM/firefly-s` | — |
+| `GITHUB_BRANCH` | 目标分支，默认 `main` | — |
 | `GEMINI_API_KEY` | AI 猫「煤球」聊天 | 猫不回复 |
 | `ADMIN_PASSKEY` | 后台/建议管理鉴权 | 放行（仅限本地使用） |
 | `QWEATHER_KEY` | 和风天气数据源 | 自动改用 Open-Meteo 免费源，无需注册 |
 
-> 注意：`feedback/` 与后台发布的文章一样基于本地文件系统存储。部署到 Vercel 等只读/临时文件系统的平台时，新写入的数据会随重新部署丢失；如需持久化请接入数据库或对象存储。
+> Token 权限：Fine-grained token 勾选该仓库的 **Contents: Read and write** 即可（经典 token 勾 `repo`）。
+> 注意：后台发布与建议数据以 Git 提交形式保存，每次写入会触发一次 Vercel 自动部署（免费额度 100 次/天，个人博客足够）。
 
 ## 技术栈
 

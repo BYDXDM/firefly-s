@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { getGithubConfig, githubCommitFile, githubDeleteFile, githubListDir, githubReadFile } from './github';
 
 /** 一条访客建议 */
 export interface FeedbackItem {
@@ -14,6 +15,7 @@ export interface FeedbackItem {
 
 const FEEDBACK_ROOT = process.cwd();
 const FEEDBACK_DIR = path.resolve(FEEDBACK_ROOT, 'feedback');
+const FEEDBACK_REPO_DIR = 'feedback';
 
 export const FEEDBACK_TYPES = ['suggestion', 'bug', 'other'] as const;
 
@@ -26,10 +28,7 @@ function escapeFrontmatter(value: string): string {
   return value.replace(/\r\n/g, ' ').replace(/\n/g, ' ').replace(/^---+/g, '- - -').trim();
 }
 
-/** 保存一条建议，返回生成的 id */
-export function saveFeedback(input: { nickname: string; contact: string; type: string; content: string }): string {
-  ensureDir();
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function buildFeedbackFile(id: string, input: { nickname: string; contact: string; type: string; content: string }): string {
   const frontmatter = [
     '---',
     `id: ${id}`,
@@ -40,21 +39,37 @@ export function saveFeedback(input: { nickname: string; contact: string; type: s
     '---',
     '',
   ].join('\n');
-  // 文件名完全由服务端生成，不含任何用户输入
-  fs.writeFileSync(path.join(FEEDBACK_DIR, `${id}.md`), frontmatter + input.content.replace(/\r\n/g, '\n').trim() + '\n', 'utf8');
+  return frontmatter + input.content.replace(/\r\n/g, '\n').trim() + '\n';
+}
+
+/** 保存一条建议，返回生成的 id。配置了 GITHUB_TOKEN 时提交到仓库，否则写本地文件。 */
+export async function saveFeedback(input: { nickname: string; contact: string; type: string; content: string }): Promise<string> {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const fileContent = buildFeedbackFile(id, input);
+
+  const ghCfg = getGithubConfig();
+  if (ghCfg) {
+    // 文件名完全由服务端生成，不含任何用户输入
+    await githubCommitFile(ghCfg, `${FEEDBACK_REPO_DIR}/${id}.md`, fileContent, `feedback: 新建议（${input.type}）`);
+    return id;
+  }
+
+  ensureDir();
+  fs.writeFileSync(path.join(FEEDBACK_DIR, `${id}.md`), fileContent, 'utf8');
   return id;
 }
 
-function parseFeedbackFile(fileName: string, raw: string): FeedbackItem | null {
+function parseFeedbackContent(raw: string, fallbackId: string): FeedbackItem | null {
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return null;
   const [, fmBlock, content] = match;
   const field = (name: string): string => {
-    const m = fmBlock.match(new RegExp(`^${name}:\\s*(.*)$`, 'm'));
+    // [ \t] 只匹配水平空白：空字段不能吞掉下一行（\s 会跨行）
+    const m = fmBlock.match(new RegExp(`^${name}:[ \\t]*(.*)$`, 'm'));
     return m ? m[1].trim() : '';
   };
   return {
-    id: field('id') || fileName.replace(/\.md$/, ''),
+    id: field('id') || fallbackId,
     nickname: field('nickname') || '匿名',
     contact: field('contact'),
     type: field('type') || 'other',
@@ -64,13 +79,27 @@ function parseFeedbackFile(fileName: string, raw: string): FeedbackItem | null {
 }
 
 /** 全部建议，按时间倒序 */
-export function getFeedbackList(): FeedbackItem[] {
+export async function getFeedbackList(): Promise<FeedbackItem[]> {
+  const ghCfg = getGithubConfig();
+  if (ghCfg) {
+    const entries = await githubListDir(ghCfg, FEEDBACK_REPO_DIR);
+    const items: FeedbackItem[] = [];
+    for (const entry of entries) {
+      if (!entry.name.endsWith('.md')) continue;
+      const raw = await githubReadFile(ghCfg, entry.path);
+      if (!raw) continue;
+      const parsed = parseFeedbackContent(raw, entry.name.replace(/\.md$/, ''));
+      if (parsed) items.push(parsed);
+    }
+    return items.sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0));
+  }
+
   if (!fs.existsSync(FEEDBACK_DIR)) return [];
   return fs.readdirSync(FEEDBACK_DIR)
     .filter((f) => f.endsWith('.md') && !f.includes('..'))
     .map((fileName) => {
       try {
-        return parseFeedbackFile(fileName, fs.readFileSync(path.join(FEEDBACK_DIR, fileName), 'utf8'));
+        return parseFeedbackContent(fs.readFileSync(path.join(FEEDBACK_DIR, fileName), 'utf8'), fileName.replace(/\.md$/, ''));
       } catch {
         return null;
       }
@@ -80,9 +109,20 @@ export function getFeedbackList(): FeedbackItem[] {
 }
 
 /** 删除一条建议 */
-export function deleteFeedback(id: string): boolean {
+export async function deleteFeedback(id: string): Promise<boolean> {
   // id 只允许安全字符，杜绝路径穿越
   if (!/^[A-Za-z0-9-]+$/.test(id)) return false;
+
+  const ghCfg = getGithubConfig();
+  if (ghCfg) {
+    try {
+      await githubDeleteFile(ghCfg, `${FEEDBACK_REPO_DIR}/${id}.md`, `feedback: 删除建议 ${id}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   const target = path.join(FEEDBACK_DIR, `${id}.md`);
   if (!target.startsWith(FEEDBACK_DIR + path.sep) || !fs.existsSync(target)) return false;
   fs.unlinkSync(target);
