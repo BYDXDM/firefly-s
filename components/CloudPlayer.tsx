@@ -40,6 +40,7 @@ export default function CloudPlayer() {
       <div className="h-full w-full rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl p-6 flex flex-col items-center justify-center transition-colors duration-700">
         <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <span className="text-slate-800 dark:text-white font-bold tracking-widest animate-pulse text-sm">CONNECTING...</span>
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 tracking-wider">正在调谐云端音乐流 · 首次加载稍慢</span>
       </div>
     );
   }
