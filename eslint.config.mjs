@@ -33,6 +33,8 @@ const eslintConfig = defineConfig([
     // 根目录的一次性补丁脚本，不属于应用代码
     "fix*.js",
     "build*.js",
+    // 一次性素材生成脚本
+    "scripts/**",
   ]),
 ]);
 

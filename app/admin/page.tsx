@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, MessageSquare, Coffee, Upload, MapPin, Sparkles,
   Tag, ArrowLeft, Loader2, Image as ImageIcon, X, Shield, CheckCircle,
-  Settings, LogOut, ShieldAlert
+  Settings, LogOut, ShieldAlert, NotebookPen, Pencil, Trash2
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
@@ -20,12 +20,17 @@ export default function AdminPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const { passkey, authRequired, logout, LoginGate } = useAdminAuth();
+  const { passkey, authenticated, authRequired, logout, LoginGate } = useAdminAuth();
 
   // 全局状态
-  const [activeTab, setActiveTab] = useState<'post' | 'moment' | 'chatter' | 'settings'>('moment');
+  const [activeTab, setActiveTab] = useState<'post' | 'moment' | 'chatter' | 'manage' | 'settings'>('moment');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // 内容管理（文章的删除与编辑）
+  const [manageList, setManageList] = useState<{ slug: string; title: string; date: string; tags: string[] }[] | null>(null);
+  const [manageLoading, setManageLoading] = useState(false);
+  const [editSlug, setEditSlug] = useState('');
 
   // 头像设置
   const [currentAvatar, setCurrentAvatar] = useState(siteConfig.avatarUrl);
@@ -73,6 +78,68 @@ export default function AdminPage() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // 拉取文章管理列表
+  const fetchManageList = async (key: string) => {
+    setManageLoading(true);
+    try {
+      const res = await fetch('/api/admin/posts', { headers: { 'X-Admin-Passkey': key }, cache: 'no-store' });
+      if (!res.ok) throw new Error('加载失败');
+      const data = await res.json();
+      setManageList(data.items || []);
+    } catch {
+      setNotification({ type: 'error', text: '文章列表加载失败' });
+    } finally {
+      setManageLoading(false);
+    }
+  };
+
+  // 进入内容管理页时自动加载
+  useEffect(() => {
+    if (authenticated && activeTab === 'manage' && manageList === null) {
+      fetchManageList(passkey);
+    }
+  }, [authenticated, activeTab, manageList, passkey]);
+
+  // 进入编辑模式：拉取文章内容填充表单
+  const handleEditPost = async (slug: string) => {
+    try {
+      const res = await fetch(`/api/admin/posts?slug=${encodeURIComponent(slug)}`, {
+        headers: { 'X-Admin-Passkey': passkey },
+        cache: 'no-store',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.post) throw new Error(data.error || '文章加载失败');
+      const post = data.post;
+      setEditSlug(slug);
+      setTitle(post.title || '');
+      setDescription(post.description || '');
+      setTags(Array.isArray(post.tags) ? post.tags.join(', ') : '');
+      setCover(post.cover || '');
+      setContent(post.content || '');
+      setActiveTab('post');
+      setNotification({ type: 'success', text: `已载入《${post.title || slug}》，修改后点击「保存修改」` });
+    } catch (err) {
+      setNotification({ type: 'error', text: err instanceof Error ? err.message : '文章加载失败' });
+    }
+  };
+
+  // 删除文章
+  const handleDeletePost = async (slug: string) => {
+    if (!confirm(`确定删除文章《${slug}》吗？此操作不可撤销。`)) return;
+    try {
+      const res = await fetch(`/api/admin/posts?slug=${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Passkey': passkey },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || '删除失败');
+      setNotification({ type: 'success', text: data.message || '文章已删除' });
+      setManageList(null);
+    } catch (err) {
+      setNotification({ type: 'error', text: err instanceof Error ? err.message : '删除失败' });
+    }
+  };
 
   // 头像上传
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +255,7 @@ export default function AdminPage() {
     }
   };
 
-  // 提交发布
+  // 提交发布（编辑模式下改为更新已有文章）
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
@@ -205,7 +272,7 @@ export default function AdminPage() {
     setNotification(null);
 
     const payload = {
-      type: activeTab,
+      type: activeTab === 'manage' ? 'post' : activeTab,
       title: activeTab !== 'moment' ? title : undefined,
       description: activeTab !== 'moment' ? description : undefined,
       tags: activeTab !== 'moment' ? tags : undefined,
@@ -217,6 +284,23 @@ export default function AdminPage() {
     };
 
     try {
+      // 编辑模式：更新已有文章
+      if (activeTab === 'post' && editSlug) {
+        const res = await fetch('/api/admin/posts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Passkey': passkey },
+          body: JSON.stringify({ slug: editSlug, title, description, tags, cover, content }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || '更新失败');
+        setNotification({ type: 'success', text: data.message || '文章已更新' });
+        setEditSlug('');
+        setTitle(''); setDescription(''); setTags(''); setCover(''); setContent('');
+        setManageList(null); // 让内容管理列表下次进入时刷新
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch('/api/admin/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Passkey': passkey },
@@ -235,6 +319,7 @@ export default function AdminPage() {
           ? '已提交到仓库，站点将在 1-2 分钟内自动重新部署后生效喵～'
           : '恭喜！发布成功，正在传送至对应星域...',
       });
+      setManageList(null); // 让内容管理列表下次进入时刷新
 
       // 重置表单
       setTitle('');
@@ -361,6 +446,17 @@ export default function AdminPage() {
               </button>
               <button
                 type="button"
+                onClick={() => { setActiveTab('manage'); setNotification(null); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs md:text-sm font-black transition-all ${
+                  activeTab === 'manage'
+                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                    : 'text-slate-500 hover:text-indigo-500 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <NotebookPen size={14} className="md:w-4 md:h-4" /> 内容管理
+              </button>
+              <button
+                type="button"
                 onClick={() => { setActiveTab('settings'); setNotification(null); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs md:text-sm font-black transition-all ${
                   activeTab === 'settings'
@@ -371,6 +467,54 @@ export default function AdminPage() {
                 <Settings size={14} className="md:w-4 md:h-4" /> 站点设置
               </button>
             </div>
+
+            {/* 内容管理面板：文章的编辑与删除 */}
+            {activeTab === 'manage' && (
+              <div className="flex flex-col gap-4">
+                {manageLoading && (
+                  <div className="flex items-center justify-center gap-2 py-10 text-slate-400 text-sm font-bold">
+                    <Loader2 size={16} className="animate-spin text-indigo-400" /> 正在加载文章列表...
+                  </div>
+                )}
+                {!manageLoading && manageList && manageList.length === 0 && (
+                  <div className="text-center py-16 text-slate-400 dark:text-slate-500 font-bold">
+                    还没有文章，去「写篇文章」发布第一篇吧～
+                  </div>
+                )}
+                {!manageLoading && manageList && manageList.map((post) => (
+                  <div
+                    key={post.slug}
+                    className="flex items-center gap-4 bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5 rounded-2xl px-5 py-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-slate-800 dark:text-white truncate">{post.title || post.slug}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold mt-1">
+                        {post.date}
+                        {post.tags.length > 0 && <span className="ml-2 text-indigo-400">{post.tags.map((t) => `#${t}`).join(' ')}</span>}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleEditPost(post.slug)}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-indigo-500 hover:text-indigo-600 px-3 py-2 rounded-full bg-indigo-500/10 transition-colors"
+                    >
+                      <Pencil size={12} /> 编辑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePost(post.slug)}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-rose-500 hover:text-rose-600 px-3 py-2 rounded-full bg-rose-500/10 transition-colors"
+                    >
+                      <Trash2 size={12} /> 删除
+                    </button>
+                  </div>
+                ))}
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold flex items-center gap-1.5">
+                  <Shield size={12} className="text-indigo-500" />
+                  列表基于当前部署的站点快照；线上模式下的增删改会在重新部署后反映到列表中
+                </p>
+              </div>
+            )}
 
             {/* 站点设置面板：头像等 */}
             {activeTab === 'settings' && (
@@ -412,9 +556,25 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* 提交表单（设置页不显示） */}
-            {activeTab !== 'settings' && (
+            {/* 提交表单（管理与设置页不显示） */}
+            {(activeTab === 'post' || activeTab === 'moment' || activeTab === 'chatter') && (
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+              {/* 编辑模式横幅 */}
+              {activeTab === 'post' && editSlug && (
+                <div className="flex items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3">
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-300">
+                    正在编辑文章：{editSlug}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setEditSlug(''); setTitle(''); setDescription(''); setTags(''); setCover(''); setContent(''); }}
+                    className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors"
+                  >
+                    取消编辑
+                  </button>
+                </div>
+              )}
               
               {/* PC/杂谈专属字段：标题 */}
               {activeTab !== 'moment' && (
@@ -651,12 +811,12 @@ export default function AdminPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      正在发布中...
+                      正在提交中...
                     </>
                   ) : (
                     <>
                       <Sparkles size={16} />
-                      确认发布内容 (Publish)
+                      {activeTab === 'post' && editSlug ? '保存修改 (Save)' : '确认发布内容 (Publish)'}
                     </>
                   )}
                 </button>

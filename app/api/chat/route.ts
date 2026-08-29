@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     const modelId = siteConfig.geminiConfig?.modelId || "gemini-2.5-flash-lite";
-    const systemPrompt = siteConfig.geminiConfig?.systemPrompt || "你是一只可爱的猫咪，叫煤球。";
+    const systemPrompt = siteConfig.geminiConfig?.systemPrompt || "你是天童爱丽丝，来自基沃托斯的游戏开发部少女，说话天真烂漫、满嘴游戏术语，称呼对方为「老师」。回复简短，每次一两句话。";
 
     const response = await ai.models.generateContent({
       model: modelId,
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const reply = response.text || "本喵现在不想理你喵...";
+    const reply = response.text || "通、通信过载了……爱丽丝的 MP 不足，稍后再试一次吧！";
 
     return NextResponse.json({ reply });
 

@@ -49,14 +49,14 @@ export default function CyberCat() {
     if (isPetted) return;
     setIsPetted(true);
     setCatMood('happy');
-    speak("呼噜噜... 摸得本喵很舒服喵~ (煤球心情愉悦，发出满意的打呼声)", 3000);
+    speak("诶嘿嘿…被教官摸头的话，爱丽丝会充满干劲的！攻击力暂时提升！", 3000);
     setTimeout(() => {
       setIsPetted(false);
       setCatMood('idle');
     }, 3000);
   };
 
-  // --- 🐟 交互事件：喂小鱼干 ---
+  // --- 🍓 交互事件：喂草莓牛奶 ---
   const handleFeed = async (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止触发摸猫或拖拽
     if (isThinking) return;
@@ -70,18 +70,18 @@ export default function CyberCat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: "我刚刚喂了你一条美味的小鱼干！你有什么表示？" }),
+        body: JSON.stringify({ message: "我刚刚给了你一瓶甜甜的草莓牛奶！你有什么表示？" }),
       });
 
       if (!res.ok) throw new Error('API Error');
 
       const data = await res.json();
       setCatMood('happy');
-      speak(`吧唧吧唧... 哇！真好吃喵！\n\n${data.reply}`, 8000);
+      speak(`咕嘟咕嘟… 好耶！草莓牛奶补给完成！\n\n${data.reply}`, 8000);
       setTimeout(() => setCatMood('idle'), 8000);
     } catch (error) {
       setCatMood('idle');
-      speak("吧唧吧唧... 鱼干好吃，但本喵卡壳了喵...", 4000);
+      speak("草莓牛奶很好喝…但爱丽丝的线路卡壳了……", 4000);
     } finally {
       setIsThinking(false);
     }
@@ -113,7 +113,7 @@ export default function CyberCat() {
       speak(data.reply, 8500);
     } catch (error) {
       setCatMood('idle');
-      speak("铲屎官的网线被老鼠咬断了吧？喵！", 4000);
+      speak("通信中断了！这一定是主线剧情里才会出现的强敌……", 4000);
     } finally {
       setIsThinking(false);
     }
@@ -141,7 +141,7 @@ export default function CyberCat() {
       speak(data.reply, 9000);
     } catch (error) {
       setCatMood('idle');
-      speak("铲屎官，煤球的大脑连接超时了喵...", 4000);
+      speak("教官，爱丽丝的大脑连接超时了……", 4000);
     } finally {
       setIsThinking(false);
     }
@@ -150,11 +150,11 @@ export default function CyberCat() {
   // --- ⏳ 随机挂机语录 ---
   useEffect(() => {
     const randomBarks = [
-      "喵呜~ 今天天气真不错喵~",
-      "好困哦，想睡觉喵...",
-      "铲屎官，快去极客开发！",
-      "我的小鱼干藏哪里去了？",
-      "怎么没人理本喵...",
+      "今天也是适合推主线的好天气！",
+      "好困哦…爱丽丝的MP快耗尽了……",
+      "教官，快去开发新游戏！",
+      "我的草莓牛奶藏哪里去了？",
+      "怎么没人理爱丽丝……",
     ];
     const randomTalkInterval = setInterval(() => {
       if (!speech && !showInput && !isThinking && Math.random() > 0.8) {
@@ -168,10 +168,10 @@ export default function CyberCat() {
 
   // 快捷问题预设
   const quickPrompts = [
-    { label: "🔮 今日喵占", text: "给本铲屎官测一测今天的运势，用你独特的喵喵塔罗牌！" },
-    { label: "🚀 催更铲屎", text: "快用你最傲娇的语气催我去写代码和更新博客！" },
-    { label: "💡 讲冷笑话", text: "给本铲屎官讲一个只有猫咪才能听懂的冷笑话喵！" },
-    { label: "❤️ 夸奖煤球", text: "煤球，你绝对是世界上最聪明、最帅气、最厉害的极客猫咪！" },
+    { label: "🎮 今日运势", text: "给爱丽丝测一测今天的运势吧！用你独特的游戏抽卡方式！" },
+    { label: "🚀 催更教官", text: "用爱丽丝的方式催我去写代码和更新博客！" },
+    { label: "💡 游戏冷知识", text: "给爱丽丝讲一个只有老玩家才懂的游戏冷知识！" },
+    { label: "❤️ 夸奖爱丽丝", text: "爱丽丝，你绝对是基沃托斯最勇敢、最可爱的英雄！" },
   ];
 
   return (
@@ -203,7 +203,7 @@ export default function CyberCat() {
             >
               {isThinking ? (
                 <div className="flex items-center gap-1.5 justify-center py-1 px-2">
-                  <span className="text-xs text-indigo-500 dark:text-indigo-400 font-extrabold animate-pulse">煤球思考中</span>
+                  <span className="text-xs text-indigo-500 dark:text-indigo-400 font-extrabold animate-pulse">爱丽丝思考中</span>
                   <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }} className="w-1.5 h-1.5 bg-indigo-500 rounded-full inline-block" />
                   <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 bg-indigo-500 rounded-full inline-block" />
                   <motion.span animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 bg-indigo-500 rounded-full inline-block" />
@@ -245,20 +245,20 @@ export default function CyberCat() {
               </svg>
             </button>
 
-            {/* 🐟 喂食按钮 */}
+            {/* 🍓 喂食按钮 */}
             <button
               onClick={handleFeed}
               disabled={isThinking}
               className={`bg-white/90 dark:bg-slate-700/90 p-2.5 rounded-full shadow-md hover:scale-110 active:scale-95 transition-transform border border-gray-100 dark:border-slate-600 flex items-center justify-center backdrop-blur-sm ${isThinking ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title="喂小鱼干"
+              title="喂草莓牛奶"
             >
-              <span className="text-xl leading-none">🐟</span>
+              <span className="text-xl leading-none">🥛</span>
             </button>
         </div>
 
-        {/* 猫咪图片容器 */}
+        {/* 爱丽丝立绘容器 */}
         <div
-          className="w-[120px] h-[120px] relative cursor-pointer"
+          className="w-[130px] h-[160px] relative cursor-pointer"
           onClick={handlePetCat}
         >
           <style>{`
@@ -272,31 +272,32 @@ export default function CyberCat() {
             .cat-sprite {
               width: 100%;
               height: 100%;
-              background-image: url('/siamese-cat.png'); 
-              background-size: 300% 300%; 
+              background-image: url('/alice.png');
+              background-size: cover;
+              background-position: center top;
               background-repeat: no-repeat;
-              image-rendering: pixelated; 
+              border-radius: 14px;
+              border: 2px solid rgba(255, 255, 255, 0.75);
+              box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(99, 102, 241, 0.18);
+              overflow: hidden;
             }
+            /* 单张立绘：不再做精灵图帧动画，改用轻量浮动/摇摆（合成器动画） */
             .cat-idle {
-              animation: idle-frames 1.2s infinite;
-              background-position-y: 0%; 
+              animation: alice-idle 3.2s ease-in-out infinite;
             }
             .cat-petted {
-              animation: pet-frames 0.8s infinite;
-              background-position-y: 50%; 
+              animation: alice-pet 0.7s ease-in-out infinite;
             }
             .cat-thinking {
-              animation: idle-frames 0.6s infinite;
-              background-position-y: 0%; 
+              animation: alice-idle 1.1s ease-in-out infinite;
             }
-            @keyframes idle-frames {
-              0%, 33.32% { background-position-x: 0%; }
-              33.33%, 66.65% { background-position-x: 50%; }
-              66.66%, 100% { background-position-x: 100%; }
+            @keyframes alice-idle {
+              0%, 100% { transform: translateY(0); }
+              50% { transform: translateY(-6px); }
             }
-            @keyframes pet-frames {
-              0%, 49.99% { background-position-x: 0%; }
-              50%, 100% { background-position-x: 50%; }
+            @keyframes alice-pet {
+              0%, 100% { transform: rotate(-4deg) scale(1.05); }
+              50% { transform: rotate(4deg) scale(1.05); }
             }
           `}</style>
           <div className={`cat-sprite drop-shadow-2xl ${isPetted ? 'cat-petted' : isThinking ? 'cat-thinking' : 'cat-idle'}`} />
@@ -341,7 +342,7 @@ export default function CyberCat() {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder={isThinking ? "煤球正在飞速思考..." : "跟煤球说点啥喵..."}
+                placeholder={isThinking ? "爱丽丝正在飞速思考..." : "跟爱丽丝说点啥……"}
                 className="bg-transparent border-none outline-none text-sm px-3 py-1 w-full dark:text-white placeholder-gray-400 font-medium"
                 disabled={isThinking}
                 autoFocus
