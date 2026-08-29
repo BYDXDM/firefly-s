@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Cloud, Sun, CloudRain, Snowflake, CloudLightning, Loader2, Wind } from 'lucide-react';
 
 interface WeatherData {
@@ -26,35 +26,40 @@ export default function WeatherTool() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
+  const fetchWeather = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await fetch('/api/weather');
+      const data = await res.json();
+      if (data.code === '200' && data.now) {
+        setWeather({
+          city: '北京',
+          temp: parseInt(data.now.temp, 10),
+          text: data.now.text,
+          icon: data.now.icon,
+          source: data.source === 'qweather' ? 'qweather' : 'open-meteo',
+        });
+      } else {
+        setFailed(true);
+      }
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch('/api/weather');
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.code === '200' && data.now) {
-          setWeather({
-            city: '北京',
-            temp: parseInt(data.now.temp, 10),
-            text: data.now.text,
-            icon: data.now.icon,
-            source: data.source === 'qweather' ? 'qweather' : 'open-meteo',
-          });
-        } else {
-          setFailed(true);
-        }
-      } catch {
-        if (!cancelled) setFailed(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    const run = async () => {
+      await fetchWeather();
     };
-    fetchWeather();
+    run();
     // 每 10 分钟自动刷新一次
-    const timer = setInterval(fetchWeather, 10 * 60 * 1000);
+    const timer = setInterval(() => { if (!cancelled) fetchWeather(); }, 10 * 60 * 1000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, []);
+  }, [fetchWeather]);
 
   if (loading) {
     return (
@@ -67,8 +72,14 @@ export default function WeatherTool() {
 
   if (failed || !weather) {
     return (
-      <div className="h-48 flex flex-col items-center justify-center text-slate-400 text-xs font-serif text-center px-4">
-        ☁️ 天气服务暂时不可用
+      <div className="h-48 flex flex-col items-center justify-center gap-3 text-slate-400 text-xs font-serif text-center px-4">
+        <span>☁️ 天气服务暂时不可用</span>
+        <button
+          onClick={fetchWeather}
+          className="text-xs font-bold text-indigo-500 hover:text-indigo-600 px-3 py-1.5 rounded-full bg-indigo-500/10 transition-colors"
+        >
+          ↻ 重试
+        </button>
       </div>
     );
   }
