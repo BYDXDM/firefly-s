@@ -145,7 +145,7 @@ export default function CyberCat() {
       speak(data.reply, 9000);
     } catch (error) {
       setCatMood('idle');
-      speak("教官，爱丽丝的大脑连接超时了……", 4000);
+      speak("Sensei，爱丽丝的大脑连接超时了……", 4000);
     } finally {
       setIsThinking(false);
     }
@@ -156,7 +156,7 @@ export default function CyberCat() {
     const randomBarks = [
       "今天也是适合推主线的好天气！",
       "好困哦…爱丽丝的MP快耗尽了……",
-      "教官，快去开发新游戏！",
+      "Sensei，快去开发新游戏！",
       "我的草莓牛奶藏哪里去了？",
       "怎么没人理爱丽丝……",
     ];
@@ -173,7 +173,7 @@ export default function CyberCat() {
   // 快捷问题预设
   const quickPrompts = [
     { label: "🎮 今日运势", text: "给爱丽丝测一测今天的运势吧！用你独特的游戏抽卡方式！" },
-    { label: "🚀 催更教官", text: "用爱丽丝的方式催我去写代码和更新博客！" },
+    { label: "🚀 催更Sensei", text: "用爱丽丝的方式催我去写代码和更新博客！" },
     { label: "💡 游戏冷知识", text: "给爱丽丝讲一个只有老玩家才懂的游戏冷知识！" },
     { label: "❤️ 夸奖爱丽丝", text: "爱丽丝，你绝对是基沃托斯最勇敢、最可爱的英雄！" },
   ];
