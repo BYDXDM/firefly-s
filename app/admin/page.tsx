@@ -3,25 +3,33 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FileText, MessageSquare, Coffee, Upload, MapPin, Sparkles, 
-  Tag, ArrowLeft, Loader2, Image as ImageIcon, X, Shield, CheckCircle 
+import {
+  FileText, MessageSquare, Coffee, Upload, MapPin, Sparkles,
+  Tag, ArrowLeft, Loader2, Image as ImageIcon, X, Shield, CheckCircle,
+  Settings, LogOut, ShieldAlert
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
+import { useAdminAuth } from '../../components/AdminAuth';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkHtml from 'remark-html';
+import { siteConfig } from '../../siteConfig';
 
 export default function AdminPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { passkey, authRequired, logout, LoginGate } = useAdminAuth();
 
   // 全局状态
-  const [activeTab, setActiveTab] = useState<'post' | 'moment' | 'chatter'>('moment');
+  const [activeTab, setActiveTab] = useState<'post' | 'moment' | 'chatter' | 'settings'>('moment');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passkey, setPasskey] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // 头像设置
+  const [currentAvatar, setCurrentAvatar] = useState(siteConfig.avatarUrl);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // 表单字段
   const [title, setTitle] = useState('');
@@ -61,10 +69,44 @@ export default function AdminPage() {
   // 自动淡出提示信息
   useEffect(() => {
     if (notification) {
-      const timer = setTimeout(() => setNotification(null), 4000);
+      const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // 头像上传
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setNotification({ type: 'error', text: '仅支持 JPG / PNG / WebP / GIF 格式喵~' });
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setNotification({ type: 'error', text: '图片太大了，请控制在 3MB 以内' });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/avatar', {
+        method: 'POST',
+        headers: { 'X-Admin-Passkey': passkey },
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || '头像更新失败');
+      setCurrentAvatar(`${data.avatarUrl}?t=${Date.now()}`);
+      setNotification({ type: 'success', text: data.message || '头像已更新' });
+    } catch (err) {
+      setNotification({ type: 'error', text: err instanceof Error ? err.message : '头像更新失败' });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // 拖拽上传文件处理
   const handleDragOver = (e: React.DragEvent) => {
@@ -220,6 +262,7 @@ export default function AdminPage() {
   };
 
   return (
+    <LoginGate>
     <div className="min-h-screen relative pb-20 flex flex-col">
       <Navbar />
 
@@ -228,18 +271,32 @@ export default function AdminPage() {
           
           {/* 顶部标题与卡片 */}
           <div className="mb-10 text-center relative">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }} 
-              animate={{ opacity: 1, y: 0 }} 
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
               className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white mb-2 md:mb-4 tracking-tighter"
             >
               唯花控制台
             </motion.h1>
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium italic opacity-80 flex items-center justify-center gap-1.5 md:gap-2">
-              <Sparkles size={12} className="text-indigo-500 animate-pulse" /> 
+              <Sparkles size={12} className="text-indigo-500 animate-pulse" />
               在这里自由发布你的文章、生活说说以及杂谈随笔吧喵~
             </p>
+            <button
+              type="button"
+              onClick={logout}
+              className="absolute right-0 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 px-3 py-1.5 rounded-full transition-colors"
+            >
+              <LogOut size={13} /> 退出登录
+            </button>
           </div>
+
+          {authRequired === false && (
+            <div className="mb-6 flex items-start gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+              <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+              <span>服务器未设置 ADMIN_PASSKEY 环境变量，后台当前对所有人开放。请在部署平台配置密钥后重新部署。</span>
+            </div>
+          )}
 
           {/* 通知浮层 */}
           <AnimatePresence>
@@ -302,9 +359,61 @@ export default function AdminPage() {
               >
                 <MessageSquare size={14} className="md:w-4 md:h-4" /> 云端杂谈 (Chatter)
               </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('settings'); setNotification(null); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs md:text-sm font-black transition-all ${
+                  activeTab === 'settings'
+                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                    : 'text-slate-500 hover:text-indigo-500 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <Settings size={14} className="md:w-4 md:h-4" /> 站点设置
+              </button>
             </div>
 
-            {/* 提交表单 */}
+            {/* 站点设置面板：头像等 */}
+            {activeTab === 'settings' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row items-center gap-6 bg-white/40 dark:bg-slate-800/40 border border-slate-200/40 dark:border-white/5 rounded-2xl p-6">
+                  <img
+                    src={currentAvatar}
+                    alt="当前头像"
+                    className="w-24 h-24 rounded-full object-cover ring-4 ring-indigo-500/30 bg-white"
+                  />
+                  <div className="flex flex-col gap-2 text-center sm:text-left">
+                    <p className="text-sm font-black text-slate-800 dark:text-white">站长头像</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium leading-relaxed">
+                      支持 JPG / PNG / WebP / GIF，3MB 以内。保存后会自动更新全站头像；
+                      线上模式需等待 1-2 分钟重新部署生效。
+                    </p>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploadingAvatar}
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="self-center sm:self-start mt-1 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white text-xs font-black shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
+                    >
+                      {isUploadingAvatar ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {isUploadingAvatar ? '上传中…' : '选择图片并保存'}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold flex items-center gap-1.5">
+                  <Shield size={12} className="text-indigo-500" />
+                  已通过密钥验证，发布与设置操作均受 ADMIN_PASSKEY 保护
+                </p>
+              </div>
+            )}
+
+            {/* 提交表单（设置页不显示） */}
+            {activeTab !== 'settings' && (
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               
               {/* PC/杂谈专属字段：标题 */}
@@ -524,20 +633,6 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* 简易安全令牌（作为发布防刷屏的安全门面） */}
-              <div className="flex flex-col gap-2 md:max-w-xs">
-                <label className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Shield size={13} className="text-indigo-500" /> 控制台通行密钥
-                </label>
-                <input
-                  type="password"
-                  placeholder="密钥保护(若未设置，随意输入即可喵)"
-                  value={passkey}
-                  onChange={(e) => setPasskey(e.target.value)}
-                  className="w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200 dark:border-white/5 rounded-xl md:rounded-2xl px-4 py-2.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono"
-                />
-              </div>
-
               {/* 发布操作栏 */}
               <div className="mt-4 flex items-center justify-between border-t border-slate-200/50 dark:border-slate-700/50 pt-6">
                 <button
@@ -568,10 +663,13 @@ export default function AdminPage() {
               </div>
 
             </form>
+            )}
+
           </div>
 
         </div>
       </PageTransition>
     </div>
+    </LoginGate>
   );
 }

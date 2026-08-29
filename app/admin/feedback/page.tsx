@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../../../components/Navbar';
+import { useAdminAuth } from '../../../components/AdminAuth';
 
 interface FeedbackItem {
   id: string;
@@ -19,10 +20,8 @@ const TYPE_LABELS: Record<string, string> = {
   other: '💬 闲聊',
 };
 
-const PASSKEY_STORAGE = 'admin-passkey';
-
 export default function AdminFeedbackPage() {
-  const [passkey, setPasskey] = useState('');
+  const { passkey, authenticated, LoginGate } = useAdminAuth();
   const [items, setItems] = useState<FeedbackItem[] | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +39,6 @@ export default function AdminFeedbackPage() {
       }
       const data = await res.json();
       setItems(data.items || []);
-      localStorage.setItem(PASSKEY_STORAGE, key);
     } catch {
       setError('加载失败，请稍后重试');
     } finally {
@@ -48,13 +46,12 @@ export default function AdminFeedbackPage() {
     }
   }, []);
 
+  // 登录通过后自动加载建议列表
   useEffect(() => {
-    const saved = localStorage.getItem(PASSKEY_STORAGE);
-    if (saved) {
-      setPasskey(saved);
-      loadList(saved);
+    if (authenticated && passkey) {
+      loadList(passkey);
     }
-  }, [loadList]);
+  }, [authenticated, passkey, loadList]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除这条建议吗？')) return;
@@ -82,6 +79,7 @@ export default function AdminFeedbackPage() {
   };
 
   return (
+    <LoginGate>
     <div className="min-h-screen relative pb-20">
       <Navbar />
       <div className="w-[95%] md:w-[90%] max-w-3xl mx-auto mt-24 md:mt-28 relative z-10">
@@ -92,31 +90,10 @@ export default function AdminFeedbackPage() {
           </p>
         </header>
 
-        {/* 密钥输入 */}
+        {/* 加载状态 */}
         {items === null && (
-          <div className="bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl rounded-3xl shadow-xl border border-white/40 dark:border-white/10 p-8">
-            <label htmlFor="admin-fb-passkey" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              管理密钥（环境变量 ADMIN_PASSKEY）
-            </label>
-            <div className="flex gap-3">
-              <input
-                id="admin-fb-passkey"
-                type="password"
-                value={passkey}
-                onChange={(e) => setPasskey(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && passkey) loadList(passkey); }}
-                placeholder="输入管理密钥"
-                className="flex-1 bg-white/50 dark:bg-slate-900/50 border border-white/50 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-              />
-              <button
-                onClick={() => passkey && loadList(passkey)}
-                disabled={loading}
-                className="px-6 py-3 rounded-2xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white text-sm font-black shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
-              >
-                {loading ? '验证中…' : '解锁'}
-              </button>
-            </div>
-            {error && <p className="mt-4 text-sm font-bold text-rose-500">{error}</p>}
+          <div className="text-center py-16 text-slate-400 dark:text-slate-500 font-bold">
+            {loading ? '正在加载建议...' : error || '...'}
           </div>
         )}
 
@@ -178,5 +155,6 @@ export default function AdminFeedbackPage() {
         )}
       </div>
     </div>
+    </LoginGate>
   );
 }
