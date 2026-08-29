@@ -44,12 +44,16 @@ export default function CyberCat() {
   };
 
   // --- 🖱️ 交互事件：摸猫猫 ---
+  const petLines = [
+    "诶嘿嘿…被Sensei摸头的话，爱丽丝会充满干劲的！攻击力暂时提升！",
+    "邦吧咔邦！", // 游戏内语音台词
+  ];
   const handlePetCat = () => {
     if (isDraggingRef.current) return;
     if (isPetted) return;
     setIsPetted(true);
     setCatMood('happy');
-    speak("诶嘿嘿…被教官摸头的话，爱丽丝会充满干劲的！攻击力暂时提升！", 3000);
+    speak(petLines[Math.floor(Math.random() * petLines.length)], 3000);
     setTimeout(() => {
       setIsPetted(false);
       setCatMood('idle');
