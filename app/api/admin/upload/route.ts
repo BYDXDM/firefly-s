@@ -25,8 +25,14 @@ export async function POST(req: Request) {
 
     // 清洗文件名，防止路径注入
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    if (cleanFileName.includes('..')) {
+      return NextResponse.json({ error: '文件名非法' }, { status: 400 });
+    }
     const uniqueName = `${Date.now()}-${cleanFileName}`;
-    const filePath = path.join(uploadDir, uniqueName);
+    const filePath = path.resolve(uploadDir, uniqueName);
+    if (!filePath.startsWith(uploadDir + path.sep)) {
+      return NextResponse.json({ error: '文件名非法' }, { status: 400 });
+    }
     fs.writeFileSync(filePath, buffer);
 
     const fileUrl = `/uploads/${uniqueName}`;

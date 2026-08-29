@@ -25,6 +25,12 @@ build*.js
 fix*.js
 metadata.json
 
+# visitor feedback data
+/feedback/
+
+# security scanner artifacts
+/.mimosa/
+
 # misc
 .DS_Store
 *.pem

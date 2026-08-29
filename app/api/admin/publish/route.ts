@@ -94,7 +94,11 @@ ${content.trim()}
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    const filePath = path.join(targetDir, fileName);
+    const filePath = path.resolve(targetDir, fileName);
+    // 文件名由 slug/时间戳生成，最终必须仍位于目标目录内（防路径穿越）
+    if (!filePath.startsWith(targetDir + path.sep) || fileName.includes('..')) {
+      return NextResponse.json({ error: '文件名非法' }, { status: 400 });
+    }
     fs.writeFileSync(filePath, fileContent, 'utf8');
 
     return NextResponse.json({ success: true, fileName, type });

@@ -30,6 +30,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 根目录的一次性补丁脚本，不属于应用代码
+    "fix*.js",
+    "build*.js",
   ]),
 ]);
 

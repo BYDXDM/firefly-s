@@ -3,6 +3,52 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 
+// 安全的四则运算求值器（调度场算法），不用 eval/new Function
+function evaluateExpression(expr: string): number {
+  const tokens = expr.match(/\d+\.?\d*|[()+\-*/]/g);
+  if (!tokens) throw new Error('bad expression');
+
+  const precedence: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  const output: (number | string)[] = [];
+  const ops: string[] = [];
+
+  for (const token of tokens) {
+    if (/^\d/.test(token)) {
+      output.push(parseFloat(token));
+    } else if (token === '(') {
+      ops.push(token);
+    } else if (token === ')') {
+      while (ops.length && ops[ops.length - 1] !== '(') output.push(ops.pop()!);
+      if (!ops.length) throw new Error('unbalanced parens');
+      ops.pop();
+    } else {
+      while (ops.length && precedence[ops[ops.length - 1]] >= precedence[token]) {
+        output.push(ops.pop()!);
+      }
+      ops.push(token);
+    }
+  }
+  while (ops.length) {
+    const op = ops.pop()!;
+    if (op === '(') throw new Error('unbalanced parens');
+    output.push(op);
+  }
+
+  const stack: number[] = [];
+  for (const item of output) {
+    if (typeof item === 'number') {
+      stack.push(item);
+    } else {
+      const b = stack.pop();
+      const a = stack.pop();
+      if (a === undefined || b === undefined) throw new Error('bad expression');
+      stack.push(item === '+' ? a + b : item === '-' ? a - b : item === '*' ? a * b : a / b);
+    }
+  }
+  if (stack.length !== 1 || !isFinite(stack[0])) throw new Error('bad expression');
+  return stack[0];
+}
+
 export default function CalculatorTool() {
   const [display, setDisplay] = useState('0');
   const [equation, setEquation] = useState('');
@@ -30,8 +76,8 @@ export default function CalculatorTool() {
       try {
         const fullEq = equation + display;
         const safeEq = fullEq.replace(/[^-()\d/*+.]/g, '');
-        const result = new Function('return ' + safeEq)();
-        setDisplay(String(parseFloat(Number(result).toFixed(6))));
+        const result = evaluateExpression(safeEq);
+        setDisplay(String(parseFloat(result.toFixed(6))));
         setEquation('');
       } catch (e) {
         setDisplay('Error');

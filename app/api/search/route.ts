@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+import { getSortedPosts, getSortedChatters, getMoments } from '@/lib/content';
 
 type SearchItem = {
   slug: string;
@@ -13,46 +11,17 @@ type SearchItem = {
   url: string;
 };
 
-async function readDir(type: 'post' | 'chatter' | 'moment'): Promise<SearchItem[]> {
-  const dirMap = { post: 'posts', chatter: 'chatters', moment: 'moments' };
-  const dirName = dirMap[type];
-  const dirPath = path.join(process.cwd(), dirName);
-  if (!fs.existsSync(dirPath)) return [];
+function toPlainText(content: string): string {
+  return content
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/[#>*`\-_[\]()!]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  const items: SearchItem[] = [];
-  const files = fs.readdirSync(dirPath).filter((f) => f.endsWith('.md'));
-
-  for (const file of files) {
-    try {
-      const fullPath = path.join(dirPath, file);
-      const raw = fs.readFileSync(fullPath, 'utf8');
-      const { data, content } = matter(raw);
-      const slug = file.replace(/\.md$/, '');
-      // 取正文前80字作为摘要
-      const plainText = content
-        .replace(/```[\s\S]*?```/g, ' ')
-        .replace(/[#>*`\-_[\]()!]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      items.push({
-        slug,
-        title: data.title || file.replace('.md', ''),
-        type,
-        date: data.date || '',
-        description: data.description || plainText.slice(0, 80),
-        tags: Array.isArray(data.tags) ? data.tags : [],
-        url:
-          type === 'post'
-            ? `/posts/${slug}`
-            : type === 'chatter'
-              ? `/chatter/${slug}`
-              : `/moments`,
-      });
-    } catch (e) {
-      // 跳过无法解析的文件
-    }
-  }
-  return items;
+function fallbackDescription(description: string, content: string): string {
+  if (description) return description;
+  return toPlainText(content).slice(0, 80);
 }
 
 export const dynamic = 'force-static';
@@ -60,11 +29,36 @@ export const dynamic = 'force-static';
 export async function GET(request: NextRequest) {
   try {
     const q = (request.nextUrl.searchParams.get('q') || '').trim().toLowerCase();
-    const [posts, chatters, moments] = await Promise.all([
-      readDir('post'),
-      readDir('chatter'),
-      readDir('moment'),
-    ]);
+
+    const posts: SearchItem[] = getSortedPosts().map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      type: 'post',
+      date: p.date,
+      description: fallbackDescription(p.description, p.content),
+      tags: p.tags,
+      url: `/posts/${p.slug}`,
+    }));
+
+    const chatters: SearchItem[] = getSortedChatters().map((c) => ({
+      slug: c.slug,
+      title: c.title,
+      type: 'chatter',
+      date: c.date,
+      description: fallbackDescription(c.description, c.content),
+      tags: c.tags,
+      url: `/chatter/${c.slug}`,
+    }));
+
+    const moments: SearchItem[] = getMoments().map((m) => ({
+      slug: m.id,
+      title: '说说',
+      type: 'moment',
+      date: m.date,
+      description: toPlainText(m.content).slice(0, 80),
+      tags: [],
+      url: '/moments',
+    }));
 
     let all = [...posts, ...chatters, ...moments];
 
@@ -87,9 +81,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ items: all });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : '搜索索引生成失败';
     return NextResponse.json(
-      { error: error.message || '搜索索引生成失败' },
+      { error: message },
       { status: 500 },
     );
   }
