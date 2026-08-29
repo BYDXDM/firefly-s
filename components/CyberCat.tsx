@@ -258,7 +258,7 @@ export default function CyberCat() {
 
         {/* 爱丽丝立绘容器 */}
         <div
-          className="w-[130px] h-[160px] relative cursor-pointer"
+          className="w-[140px] h-[210px] relative cursor-pointer"
           onClick={handlePetCat}
         >
           <style>{`
@@ -272,14 +272,10 @@ export default function CyberCat() {
             .cat-sprite {
               width: 100%;
               height: 100%;
-              background-image: url('/alice.png');
-              background-size: cover;
-              background-position: center top;
+              background-image: url('/alice-sprite.webp');
+              background-size: contain;
+              background-position: center bottom;
               background-repeat: no-repeat;
-              border-radius: 14px;
-              border: 2px solid rgba(255, 255, 255, 0.75);
-              box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(99, 102, 241, 0.18);
-              overflow: hidden;
             }
             /* 单张立绘：不再做精灵图帧动画，改用轻量浮动/摇摆（合成器动画） */
             .cat-idle {
