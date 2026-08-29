@@ -32,10 +32,10 @@ export default function WeatherTool() {
     try {
       const res = await fetch('/api/weather');
       const data = await res.json();
-      if (data.code === '200' && data.now) {
-        setWeather({
-          city: '北京',
-          temp: parseInt(data.now.temp, 10),
+        if (data.code === '200' && data.now) {
+          setWeather({
+            city: '东莞',
+            temp: parseInt(data.now.temp, 10),
           text: data.now.text,
           icon: data.now.icon,
           source: data.source === 'qweather' ? 'qweather' : 'open-meteo',

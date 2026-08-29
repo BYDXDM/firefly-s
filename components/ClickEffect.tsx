@@ -62,10 +62,13 @@ export default function ClickEffect() {
 
     const handleClick = (e: MouseEvent) => {
       ripples.push(new Ripple(e.clientX, e.clientY));
+      startAnimation();
     };
 
     window.addEventListener('click', handleClick);
 
+    // 性能关键：只在有涟漪时运行 rAF 循环，空闲时完全停下（原来 24 小时全屏清屏 60fps）
+    let rafId: number | null = null;
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -81,11 +84,20 @@ export default function ClickEffect() {
           i--;
         }
       }
-      requestAnimationFrame(animate);
+
+      if (ripples.length > 0) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        rafId = null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
     };
-    animate();
+    const startAnimation = () => {
+      if (rafId === null) rafId = requestAnimationFrame(animate);
+    };
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('resize', resize);
       window.removeEventListener('click', handleClick);
     };

@@ -4,9 +4,9 @@
 // 注意：必须 force-dynamic + no-store，避免构建期预渲染把失败结果冻结到线上。
 import { NextResponse } from 'next/server';
 
-// 北京（与前端展示文案一致），想换城市改这里的经纬度即可
-const LAT = 39.9042;
-const LON = 116.4074;
+// 东莞（与前端展示文案一致），想换城市改这里的经纬度即可
+const LAT = 23.0207;
+const LON = 113.7518;
 
 export const dynamic = 'force-dynamic';
 
@@ -123,11 +123,11 @@ const REQUEST_INIT: RequestInit = {
 };
 
 async function fetchFromQWeather(token: string): Promise<NowWeather | null> {
-  // 和风天气 API Host 因账号类型而异，两个都试一遍
+  // 和风天气 API Host 因账号类型而异，两个都试一遍（101281601 = 东莞）
   const hosts = ['https://api.qweather.com', 'https://devapi.qweather.com'];
   for (const host of hosts) {
     try {
-      const data = await parseOkJson(await fetch(`${host}/v7/weather/now?location=101010100`, REQUEST_INIT)) as { code?: string; now?: { temp: string; text: string; icon: string } };
+      const data = await parseOkJson(await fetch(`${host}/v7/weather/now?location=101281601`, REQUEST_INIT)) as { code?: string; now?: { temp: string; text: string; icon: string } };
       if (data.code === '200' && data.now) {
         return { temp: String(data.now.temp), text: data.now.text, icon: String(data.now.icon) };
       }
@@ -156,7 +156,7 @@ async function fetchFromOpenMeteo(): Promise<NowWeather | null> {
 async function fetchFromWttr(): Promise<NowWeather | null> {
   try {
     // lang_zh 字段自带中文天气描述
-    const data = await parseOkJson(await fetch('https://wttr.in/Beijing?format=j1', REQUEST_INIT)) as {
+    const data = await parseOkJson(await fetch('https://wttr.in/Dongguan?format=j1', REQUEST_INIT)) as {
       current_condition?: Array<{
         temp_C?: string;
         weatherCode?: string;

@@ -7,16 +7,11 @@ import WindyGrass from './WindyGrass';
 export default function BackgroundEffects() {
   const { isDark } = useTheme();
 
+  // 性能关键：只渲染当前主题对应的粒子特效。
+  // 之前用 opacity-0 隐藏另一个，但 CSS 动画在透明状态下依然全速运行，白白消耗一半性能。
   return (
     <>
-      {/* 核心魔法：根据 isDark 切换特效组件 */}
-      <div className={`transition-opacity duration-1000 ${isDark ? 'opacity-100' : 'opacity-0'}`}>
-        <Fireflies />
-      </div>
-      <div className={`transition-opacity duration-1000 ${isDark ? 'opacity-0' : 'opacity-100'}`}>
-        <Sakura />
-      </div>
-
+      {isDark ? <Fireflies /> : <Sakura />}
       {/* 草地一直存在，但它内部会自动改变颜色 */}
       <WindyGrass />
     </>

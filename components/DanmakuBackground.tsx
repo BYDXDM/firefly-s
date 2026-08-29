@@ -42,10 +42,10 @@ export default function DanmakuBackground() {
       {danmakus.map((item) => (
         <div
           key={item.id}
-          className="absolute whitespace-nowrap text-white/30 dark:text-white/10 font-bold text-lg tracking-wider select-none"
+          className="absolute whitespace-nowrap text-white/30 dark:text-white/10 font-bold text-lg tracking-wider select-none will-change-transform"
           style={{
             top: `${item.top}%`,
-            right: '-100%',
+            left: '100%',
             animation: `float-left ${item.duration}s linear ${item.delay}s infinite`,
           }}
         >
@@ -55,15 +55,10 @@ export default function DanmakuBackground() {
 
       <style dangerouslySetInnerHTML={{
         __html: `
+        /* 只用 transform 做位移（合成器动画），避免 right 属性每帧触发布局重排 */
         @keyframes float-left {
-          0% {
-            right: -100%;
-            transform: translateX(100%);
-          }
-          100% {
-            right: 100%;
-            transform: translateX(-100%);
-          }
+          from { transform: translateX(0); }
+          to { transform: translateX(calc(-100vw - 100%)); }
         }
       `}} />
     </div>
