@@ -30,16 +30,17 @@ export const siteConfig = {
   // 5. 首页照片墙预览图
   photoWallImage: "https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg",
   // 本地完整音源，避免网易云试听、版权和临时链接导致无法播放
+  // cover：与歌曲气质对应的蔚蓝档案学生立绘封面（SchaleDB 资源裁剪）
   localMusic: [
-    { title: "Oracle (feat. nayuta)", artist: "Room97 / nayuta", src: "/music/01-oracle.mp3" },
-    { title: "爱的故事上集", artist: "孙耀威", src: "/music/02-love-story-ktv.mp3" },
-    { title: "Curtain Call", artist: "Steam Phunk / Lucy Neville", src: "/music/03-curtain-call.mp3" },
-    { title: "Little of Your Love (BloodPop Remix)", artist: "HAIM / BloodPop", src: "/music/04-little-of-your-love.mp3" },
-    { title: "Fly (feat. Summer Haze)", artist: "Sineself / Esydia", src: "/music/05-fly.mp3" },
-    { title: "Okay Alone (feat. Luma)", artist: "Sineself / Luma", src: "/music/06-okay-alone.mp3" },
-    { title: "SINOS DE NATAL FUNK", artist: "天灰灰", src: "/music/07-sinos-de-natal.mp3" },
-    { title: "Daylight", artist: "Seredris", src: "/music/08-daylight.mp3" },
-    { title: "I Really Want to Stay at Your House", artist: "Rosa Walton", src: "/music/09-i-really-want-to-stay.mp3" },
+    { title: "Oracle (feat. nayuta)", artist: "Room97 / nayuta", src: "/music/01-oracle.mp3", cover: "/music/covers/01-oracle.jpg" },
+    { title: "爱的故事上集", artist: "孙耀威", src: "/music/02-love-story-ktv.mp3", cover: "/music/covers/02-love-story-ktv.jpg" },
+    { title: "Curtain Call", artist: "Steam Phunk / Lucy Neville", src: "/music/03-curtain-call.mp3", cover: "/music/covers/03-curtain-call.jpg" },
+    { title: "Little of Your Love (BloodPop Remix)", artist: "HAIM / BloodPop", src: "/music/04-little-of-your-love.mp3", cover: "/music/covers/04-little-of-your-love.jpg" },
+    { title: "Fly (feat. Summer Haze)", artist: "Sineself / Esydia", src: "/music/05-fly.mp3", cover: "/music/covers/05-fly.jpg" },
+    { title: "Okay Alone (feat. Luma)", artist: "Sineself / Luma", src: "/music/06-okay-alone.mp3", cover: "/music/covers/06-okay-alone.jpg" },
+    { title: "SINOS DE NATAL FUNK", artist: "天灰灰", src: "/music/07-sinos-de-natal.mp3", cover: "/music/covers/07-sinos-de-natal.jpg" },
+    { title: "Daylight", artist: "Seredris", src: "/music/08-daylight.mp3", cover: "/music/covers/08-daylight.jpg" },
+    { title: "I Really Want to Stay at Your House", artist: "Rosa Walton", src: "/music/09-i-really-want-to-stay.mp3", cover: "/music/covers/09-i-really-want-to-stay.jpg" },
   ],
   social: {
     github: "https://github.com/bydxdm",

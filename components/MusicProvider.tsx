@@ -86,7 +86,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       id: `local-${index + 1}`,
       title: song.title,
       artist: song.artist,
-      cover: 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
+      cover: song.cover || 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
       src: song.src,
       lrcUrl: null,
       lyrics: [],
