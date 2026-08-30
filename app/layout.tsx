@@ -106,9 +106,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             `}} />
           </MusicProvider>
 
-          <div className="hidden md:block">
-            <CyberCat />
-          </div>
+          <CyberCat />
 
           <GlobalSearch />
 

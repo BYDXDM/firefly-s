@@ -198,7 +198,7 @@ export default function CyberCat() {
           isDraggingRef.current = false;
         }, 100);
       }}
-      className="fixed bottom-20 right-20 z-[9999] flex flex-col items-center group cursor-grab active:cursor-grabbing"
+      className="fixed bottom-24 right-4 sm:bottom-20 sm:right-20 z-[9999] flex flex-col items-center group cursor-grab active:cursor-grabbing"
     >
       {/* 💬 聊天气泡 */}
       <div className="relative w-full flex justify-center mb-6">
@@ -208,7 +208,7 @@ export default function CyberCat() {
               initial={{ opacity: 0, y: 10, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="absolute bottom-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow-2xl border border-gray-100/50 dark:border-slate-700/50 text-sm w-[240px] max-w-[240px] break-words text-center leading-relaxed"
+              className="absolute bottom-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-gray-200 px-4 py-3 rounded-2xl shadow-2xl border border-gray-100/50 dark:border-slate-700/50 text-sm w-[220px] max-w-[calc(100vw-2.5rem)] sm:w-[240px] sm:max-w-[240px] break-words text-center leading-relaxed"
               style={{ pointerEvents: 'none', transformOrigin: 'bottom center' }}
             >
               {isThinking ? (
@@ -240,7 +240,7 @@ export default function CyberCat() {
         }`} />
 
         {/* 🌟 交互按钮区 */}
-        <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
+        <div className="absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
             {/* 💬 聊天按钮 */}
             <button
               onClick={(e) => {
@@ -268,7 +268,7 @@ export default function CyberCat() {
 
         {/* 爱丽丝立绘容器 */}
         <div
-          className="w-[140px] h-[210px] relative cursor-pointer"
+          className="w-[96px] h-[140px] sm:w-[140px] sm:h-[210px] relative cursor-pointer"
           onClick={handlePetCat}
         >
           <style>{`
@@ -317,11 +317,11 @@ export default function CyberCat() {
             initial={{ opacity: 0, x: 30, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 30, scale: 0.9 }}
-            className="absolute right-[135px] bottom-0 flex flex-col gap-2.5 z-20 items-end"
+            className="absolute right-[100px] sm:right-[135px] bottom-0 flex flex-col gap-2.5 z-20 items-end"
           >
             {/* 💡 快捷问题气泡群 (只有当未在思考时展现) */}
             {!isThinking && (
-              <div className="flex flex-col gap-1.5 items-end max-w-[260px] md:max-w-[320px]">
+              <div className="flex flex-col gap-1.5 items-end max-w-[220px] sm:max-w-[260px] md:max-w-[320px]">
                 {quickPrompts.map((prompt) => (
                   <button
                     key={prompt.label}
@@ -342,7 +342,7 @@ export default function CyberCat() {
             <form
               onSubmit={handleChatSubmit}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md p-1.5 rounded-full shadow-2xl flex items-center border border-gray-200/80 dark:border-slate-700/80 w-56 md:w-64"
+              className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md p-1.5 rounded-full shadow-2xl flex items-center border border-gray-200/80 dark:border-slate-700/80 w-48 sm:w-56 md:w-64"
             >
               <input
                 type="text"

@@ -99,7 +99,7 @@ function mapWttrCode(code: number): WeatherDescriptor {
     362: { text: '雨夹雪', icon: '313' },
     365: { text: '雨夹雪', icon: '313' },
     368: { text: '阵雪', icon: '406' },
-    371: { text: '阵雪', icon: '406' },
+    371: { text: '雨夹雪', icon: '313' },
     374: { text: '冻雨', icon: '313' },
     377: { text: '冻雨', icon: '313' },
     386: { text: '雷阵雨', icon: '302' },
@@ -189,6 +189,7 @@ export async function GET() {
   return NextResponse.json({
     code: '200',
     source: token ? 'qweather' : 'open-meteo',
+    city: '东莞',
     now,
   });
 }

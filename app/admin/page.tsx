@@ -15,6 +15,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkHtml from 'remark-html';
 import { siteConfig } from '../../siteConfig';
+import { detectVisitorLocation } from '../../lib/visitorGeo';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -78,6 +79,21 @@ export default function AdminPage() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // 📍 发布位置自动定位：登录后探测管理员真实 IP 归属地（走国内直连服务，规则模式代理下不被代理出口干扰）；手动改过就不覆盖
+  useEffect(() => {
+    if (!authenticated) return;
+    if (location.trim() && location.trim() !== '江西省 南昌市') return;
+    let cancelled = false;
+    detectVisitorLocation().then((loc) => {
+      if (cancelled || !loc) return;
+      const prov = (loc.province || '').replace(/省$/, '').trim();
+      const city = (loc.city || '').replace(/市$/, '').trim();
+      const label = prov && city ? (prov === city ? prov : `${prov} ${city}`) : (city || prov);
+      if (label) setLocation(label);
+    });
+    return () => { cancelled = true; };
+  }, [authenticated, location]);
 
   // 拉取文章管理列表
   const fetchManageList = async (key: string) => {
