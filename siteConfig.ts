@@ -29,16 +29,17 @@ export const siteConfig = {
 
   // 5. 首页照片墙预览图
   photoWallImage: "https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg",
-  cloudMusicIds: [
-    "1838743757", // Oracle (feat. nayuta) - Room97/nayuta [完整224s]
-    "29209604",   // 爱的故事上集 - 王闻/童丽 (免费完整258s，替代孙耀威VIP版)
-    "3423976614", // Curtain Call - Thunder Within (免费完整218s，替代Steam Phunk VIP版)
-    "1297816672", // Little of Your Love - Cardio Workout (免费完整204s，替代HAIM VIP版)
-    "2690566824", // It's Okay - Sineself/Luma (免费完整207s，替代Fly VIP版)
-    "2705000641", // I Really Want to Stay at Your House - 真栗 (免费完整246s，替代VIP版)
-    "3394317572", // SINOS DE NATAL FUNK (真爱无敌) - 天灰灰 [完整157s]
-    "1372188635", // Daylight - Seredris [完整162s]
-    "1913115303", // Okay Alone (feat. Luma) - Sineself/Luma [完整240s]
+  // 本地完整音源，避免网易云试听、版权和临时链接导致无法播放
+  localMusic: [
+    { title: "Oracle (feat. nayuta)", artist: "Room97 / nayuta", src: "/music/01-oracle.mp3" },
+    { title: "爱的故事上集", artist: "孙耀威", src: "/music/02-love-story-ktv.mp3" },
+    { title: "Curtain Call", artist: "Steam Phunk / Lucy Neville", src: "/music/03-curtain-call.mp3" },
+    { title: "Little of Your Love (BloodPop Remix)", artist: "HAIM / BloodPop", src: "/music/04-little-of-your-love.mp3" },
+    { title: "Fly (feat. Summer Haze)", artist: "Sineself / Esydia", src: "/music/05-fly.mp3" },
+    { title: "Okay Alone (feat. Luma)", artist: "Sineself / Luma", src: "/music/06-okay-alone.mp3" },
+    { title: "SINOS DE NATAL FUNK", artist: "天灰灰", src: "/music/07-sinos-de-natal.mp3" },
+    { title: "Daylight", artist: "Seredris", src: "/music/08-daylight.mp3" },
+    { title: "I Really Want to Stay at Your House", artist: "Rosa Walton", src: "/music/09-i-really-want-to-stay.mp3" },
   ],
   social: {
     github: "https://github.com/bydxdm",
