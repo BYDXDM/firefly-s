@@ -1,9 +1,30 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, PanInfo } from "framer-motion";
 import { ReactNode } from "react";
+import { useState, useEffect } from "react";
 
 export default function PageTransition({ children, className }: { children: ReactNode; className?: string }) {
+  // 移动端性能：不做 y 位移动画。页面滑动时其下所有 backdrop-blur 卡片每帧重算模糊，
+  // 是切页掉帧主因。移动端仅做快速淡入，桌面端保留原动画。
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 767px)').matches);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <motion.div
+        className={className}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ ease: "easeOut", duration: 0.25 }}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       className={className}
