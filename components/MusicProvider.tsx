@@ -79,79 +79,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [playMode, setPlayMode] = useState<PlayMode>('loop');
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const trackGainsRef = useRef<Record<string, number>>({});
-  const normalizingRef = useRef<Partial<Record<string, Promise<number>>>>({});
-
-  const ensureAudioGraph = () => {
-    const el = audioRef.current;
-    if (!el || typeof window === 'undefined') return null;
-    if (!audioContextRef.current) {
-      const context = new AudioContext();
-      const source = context.createMediaElementSource(el);
-      const gain = context.createGain();
-      source.connect(gain).connect(context.destination);
-      audioContextRef.current = context;
-      gainNodeRef.current = gain;
-    }
-    return audioContextRef.current;
-  };
-
-  const applyOutputGain = (trackGain = 1) => {
-    const node = gainNodeRef.current;
-    const context = audioContextRef.current;
-    if (!node || !context) return;
-    const nextGain = isMuted ? 0 : volume * trackGain;
-    node.gain.setTargetAtTime(nextGain, context.currentTime, 0.05);
-  };
-
-  const getTrackGain = async (song: any): Promise<number> => {
-    const cached = trackGainsRef.current[song.id];
-    if (cached) return cached;
-    const pending = normalizingRef.current[song.id];
-    if (pending) return pending;
-
-    const promise = (async () => {
-      try {
-        const context = audioContextRef.current || new AudioContext();
-        audioContextRef.current = context;
-        const response = await fetch(song.src, { cache: 'force-cache' });
-        if (!response.ok) throw new Error(`音频加载失败: ${response.status}`);
-        const buffer = await context.decodeAudioData(await response.arrayBuffer());
-        let sumSquares = 0;
-        let sampleCount = 0;
-        const step = Math.max(1, Math.floor(buffer.sampleRate / 20));
-        for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
-          const samples = buffer.getChannelData(channel);
-          for (let i = 0; i < samples.length; i += step) {
-            sumSquares += samples[i] * samples[i];
-            sampleCount += 1;
-          }
-        }
-        const rms = Math.sqrt(sumSquares / Math.max(sampleCount, 1));
-        const gain = Math.min(1.8, Math.max(0.55, 0.12 / Math.max(rms, 0.035)));
-        trackGainsRef.current[song.id] = gain;
-        return gain;
-      } catch (error) {
-        console.warn(`[music] 响度分析失败，使用默认增益:`, error);
-        trackGainsRef.current[song.id] = 1;
-        return 1;
-      }
-    })();
-    normalizingRef.current[song.id] = promise;
-    return promise;
-  };
-
-  const playWithNormalization = async (song: any, el: HTMLAudioElement) => {
-    const context = ensureAudioGraph();
-    if (context?.state === 'suspended') await context.resume();
-    const gain = await getTrackGain(song);
-    applyOutputGain(gain);
-    await el.play();
-  };
 
   useEffect(() => {
+    // 音源文件已在本地做 EBU R128 响度标准化（-16 LUFS），播放器直接播放即可，无需再补偿
     const localPlaylist = (siteConfig.localMusic || []).map((song, index) => ({
       id: `local-${index + 1}`,
       title: song.title,
@@ -201,15 +131,20 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setProgress(0);
 
     if (isPlaying && audioRef.current) {
-      playWithNormalization(currentSong, audioRef.current).catch(() => setIsPlaying(false));
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => setIsPlaying(false));
+      }
     }
     return () => { isMounted = false; };
   }, [currentIndex, playlist.length]); // 移除 playlist 依赖防止无限循环，只依赖长度
 
   // 🌟 4. 同步音量到 audio 元素
   useEffect(() => {
-    applyOutputGain(trackGainsRef.current[playlist[currentIndex]?.id] || 1);
-  }, [volume, isMuted, currentIndex, playlist]);
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [volume, isMuted]);
 
   // 🌟 togglePlay：先真正调用 play/pause，成功与否由 onPlay/onPause 事件回写状态，
   // 避免"按钮显示暂停但实际没播/还在播"的乐观更新错位
@@ -217,7 +152,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const el = audioRef.current;
     if (!el || !el.src) return;
     if (el.paused) {
-      playWithNormalization(playlist[currentIndex], el).catch(() => { /* 失败时 onPlay 不触发，按钮保持暂停态 */ });
+      el.play().catch(() => { /* 失败时 onPlay 不触发，按钮保持暂停态 */ });
     } else {
       el.pause();
     }
@@ -246,9 +181,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // 切歌后自动播放：等 src 切换、音频就绪后再 play，由 onPlay 事件驱动按钮状态
     requestAnimationFrame(() => {
       const el = audioRef.current;
-      if (el) {
-        playWithNormalization(playlist[index], el).catch(() => { /* 自动播放被拦截时保持暂停态 */ });
-      }
+      if (el) { el.play().catch(() => { /* 自动播放被拦截时保持暂停态 */ }); }
     });
   };
 
@@ -278,7 +211,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const handleEnded = () => {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
-       playWithNormalization(playlist[currentIndex], audioRef.current).catch(() => setIsPlaying(false));
+       audioRef.current.play();
     } else {
        nextSong();
     }
