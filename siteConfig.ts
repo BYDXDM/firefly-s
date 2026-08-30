@@ -29,7 +29,17 @@ export const siteConfig = {
 
   // 5. 首页照片墙预览图
   photoWallImage: "https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg",
-  cloudMusicIds: ["1838743757", "28914470", "1414940085", "497494031", "1992855396", "1990743306", "3394317572", "1372188635", "1913115303"],
+  cloudMusicIds: [
+    "1838743757", // Oracle (feat. nayuta) - Room97/nayuta [完整224s]
+    "29209604",   // 爱的故事上集 - 王闻/童丽 (免费完整258s，替代孙耀威VIP版)
+    "3423976614", // Curtain Call - Thunder Within (免费完整218s，替代Steam Phunk VIP版)
+    "1297816672", // Little of Your Love - Cardio Workout (免费完整204s，替代HAIM VIP版)
+    "2690566824", // It's Okay - Sineself/Luma (免费完整207s，替代Fly VIP版)
+    "2705000641", // I Really Want to Stay at Your House - 真栗 (免费完整246s，替代VIP版)
+    "3394317572", // SINOS DE NATAL FUNK (真爱无敌) - 天灰灰 [完整157s]
+    "1372188635", // Daylight - Seredris [完整162s]
+    "1913115303", // Okay Alone (feat. Luma) - Sineself/Luma [完整240s]
+  ],
   social: {
     github: "https://github.com/bydxdm",
     gitee: "",

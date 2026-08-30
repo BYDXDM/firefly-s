@@ -143,6 +143,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
     }
 
+    // 切歌：先复位播放状态，避免旧歌状态残留（进度条/按钮错位）
+    setCurrentTime(0);
+    setDuration(0);
+    setProgress(0);
+
     if (isPlaying && audioRef.current) {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
@@ -159,11 +164,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, isMuted]);
 
+  // 🌟 togglePlay：先真正调用 play/pause，成功与否由 onPlay/onPause 事件回写状态，
+  // 避免"按钮显示暂停但实际没播/还在播"的乐观更新错位
   const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) audioRef.current.pause();
-      else audioRef.current.play().catch(() => setIsPlaying(false));
-      setIsPlaying(!isPlaying);
+    const el = audioRef.current;
+    if (!el || !el.src) return;
+    if (el.paused) {
+      el.play().catch(() => { /* 失败时 onPlay 不触发，按钮保持暂停态 */ });
+    } else {
+      el.pause();
     }
   };
 
@@ -187,7 +196,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // 🌟 6. 暴露直接播放指定歌曲的方法
   const playSong = (index: number) => {
     setCurrentIndex(index);
-    if (!isPlaying) setIsPlaying(true); // 保证切歌后自动播放
+    // 切歌后自动播放：等 src 切换、音频就绪后再 play，由 onPlay 事件驱动按钮状态
+    requestAnimationFrame(() => {
+      const el = audioRef.current;
+      if (el) { el.play().catch(() => { /* 自动播放被拦截时保持暂停态 */ }); }
+    });
   };
 
   const handleTimeUpdate = () => {
@@ -256,6 +269,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded} // 使用我们重写的结束处理
           onLoadedMetadata={handleTimeUpdate}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
         />
       )}
     </MusicContext.Provider>
