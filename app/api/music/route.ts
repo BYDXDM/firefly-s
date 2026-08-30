@@ -19,6 +19,36 @@ type SongResult = {
 }
 
 export async function GET(request: NextRequest) {
+  const audioId = request.nextUrl.searchParams.get('audio')
+  if (audioId) {
+    if (!/^\d+$/.test(audioId)) {
+      return NextResponse.json({ error: 'Invalid audio id' }, { status: 400 })
+    }
+
+    try {
+      const audioRes = await fetch(`https://music.163.com/song/media/outer/url?id=${audioId}.mp3`, {
+        headers: NET_EASE_HEADERS,
+        redirect: 'follow',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!audioRes.ok || !audioRes.body) {
+        return NextResponse.json({ error: 'Audio unavailable' }, { status: 502 })
+      }
+      return new Response(audioRes.body, {
+        status: 200,
+        headers: {
+          'Content-Type': audioRes.headers.get('content-type') || 'audio/mpeg',
+          'Cache-Control': 'public, max-age=3600',
+          ...(audioRes.headers.get('content-length') ? { 'Content-Length': audioRes.headers.get('content-length')! } : {}),
+        },
+      })
+    } catch (error) {
+      console.error(`[api/music] 音频代理 ${audioId} 失败:`, error)
+      return NextResponse.json({ error: 'Audio unavailable' }, { status: 502 })
+    }
+  }
+
   const ids = request.nextUrl.searchParams.get('ids')
   if (!ids) {
     return NextResponse.json({ error: 'Missing ids parameter' }, { status: 400 })

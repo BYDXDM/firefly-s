@@ -166,7 +166,7 @@ export default function AdminPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || '头像更新失败');
-      setCurrentAvatar(`${data.avatarUrl}?t=${Date.now()}`);
+      setCurrentAvatar(`${data.previewUrl || data.avatarUrl}?t=${Date.now()}`);
       setNotification({ type: 'success', text: data.message || '头像已更新' });
     } catch (err) {
       setNotification({ type: 'error', text: err instanceof Error ? err.message : '头像更新失败' });

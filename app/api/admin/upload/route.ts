@@ -35,7 +35,8 @@ export async function POST(req: Request) {
         `content: 上传图片 ${uniqueName}`,
         true
       );
-      return NextResponse.json({ url: `/uploads/${uniqueName}`, mode: 'github' });
+      const url = `https://cdn.jsdelivr.net/gh/${ghCfg.repo}@${encodeURIComponent(ghCfg.branch)}/public/uploads/${encodeURIComponent(uniqueName)}`;
+      return NextResponse.json({ url, mode: 'github' });
     }
 
     // 本地开发：直接写 public/uploads

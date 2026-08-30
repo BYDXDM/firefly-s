@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `avatar.${ext}`;
+    const fileName = `avatar-${Date.now()}.${ext}`;
     const avatarUrl = `/${fileName}`;
 
     const ghCfg = getGithubConfig();
@@ -53,9 +53,11 @@ export async function POST(req: Request) {
           await githubCommitFile(ghCfg, SITE_CONFIG_PATH, patched, `content: 头像路径更新为 ${avatarUrl}`);
         }
       }
+      const previewUrl = `https://cdn.jsdelivr.net/gh/${ghCfg.repo}@${encodeURIComponent(ghCfg.branch)}/public/${encodeURIComponent(fileName)}`;
       return NextResponse.json({
         ok: true,
         avatarUrl,
+        previewUrl,
         mode: 'github',
         message: '头像已提交到仓库，站点将在 1-2 分钟内自动重新部署后生效',
       });
