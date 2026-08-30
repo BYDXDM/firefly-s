@@ -74,7 +74,9 @@ export default function MusicClient() {
     let idx = parsedLyrics.findIndex((l: any) => l.time > currentTime) - 1;
     if (idx === -2) idx = parsedLyrics.length - 1;
     return Math.max(0, idx);
-  }, [currentTime, parsedLyrics]);
+    // 用整数秒做依赖：currentTime 每秒才变一次（Provider 已节流），
+    // 同时避免歌词索引微小变化触发 smooth 滚动抖动
+  }, [Math.floor(currentTime), parsedLyrics]);
 
   useEffect(() => {
     if (activeLyricRef.current && lyricContainerRef.current && activeTab === 'lyrics') {
@@ -131,7 +133,7 @@ export default function MusicClient() {
   return (
     <div className="min-h-screen relative pb-10 flex flex-col">
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-[-10%] bg-cover bg-center transition-all duration-1000 blur-[50px] opacity-40 dark:opacity-20 saturate-150" style={{ backgroundImage: `url(${songCover})` }} />
+        <div className="absolute inset-[-10%] bg-cover bg-center transition-all duration-1000 blur-[50px] opacity-40 dark:opacity-20 saturate-150 hidden md:block" style={{ backgroundImage: `url(${songCover})` }} />
         <div className="absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-sm" />
       </div>
 
@@ -151,7 +153,7 @@ export default function MusicClient() {
 
               <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full overflow-hidden py-4 md:py-0">
                 <div className="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-64 lg:h-64 flex-shrink-0 aspect-square mb-6 md:mb-10 flex items-center justify-center">
-                   <div className={`absolute inset-0 m-auto w-[85%] h-[85%] bg-indigo-500/25 blur-[35px] rounded-full transition-all duration-1000 z-0 ${isPlaying ? 'opacity-90 scale-105' : 'opacity-20 scale-100'}`}></div>
+                   <div className={`absolute inset-0 m-auto w-[85%] h-[85%] bg-indigo-500/25 blur-[35px] rounded-full transition-all duration-1000 z-0 hidden md:block ${isPlaying ? 'opacity-90 scale-105' : 'opacity-20 scale-100'}`}></div>
                    <div className="absolute inset-0 m-auto w-[90%] h-[90%] rounded-full shadow-[0_0_40px_-5px_rgba(99,102,241,0.4)] z-0"></div>
                    <motion.div className={`absolute inset-0 w-full h-full rounded-full border-[4px] md:border-[6px] border-white/80 dark:border-slate-600/80 shadow-2xl overflow-hidden transition-transform duration-700 z-10 rotating-disc ${isPlaying ? 'scale-100' : 'scale-95'}`}
                      style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}>
@@ -281,6 +283,14 @@ export default function MusicClient() {
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .rotating-disc { animation: spin 20s linear infinite; }
+        /* 移动端性能：降低旋转帧负担 + 关闭歌词发光滤镜 */
+        @media (max-width: 767px) {
+          .rotating-disc { animation: none; }
+          .lyric-mask-container {
+            -webkit-mask-image: none;
+            mask-image: none;
+          }
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .lyric-mask-container {

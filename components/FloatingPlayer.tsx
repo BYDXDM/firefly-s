@@ -39,7 +39,7 @@ export default function FloatingPlayer() {
 
         {/* 旋转的光碟封面 */}
         <div
-          className="w-10 h-10 rounded-full border border-white/50 shadow-sm flex-shrink-0 overflow-hidden relative animate-[spin_6s_linear_infinite] pointer-events-none"
+          className="w-10 h-10 rounded-full border border-white/50 shadow-sm flex-shrink-0 overflow-hidden relative pointer-events-none motion-reduce:animate-none md:animate-[spin_6s_linear_infinite]"
           style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
         >
           <img src={currentSong.cover} alt="cover" className="w-full h-full object-cover" />

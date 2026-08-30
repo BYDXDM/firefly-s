@@ -11,13 +11,22 @@ const formatTime = (time: number) => {
   return `${m}:${s}`;
 };
 
+// 移动端性能标记（低配 GPU 上 backdrop-blur + 无限动画代价很高）
+const isMobile = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
 export default function CloudPlayer() {
   const { playlist, currentSong, isPlaying, progress, currentTime, duration, currentLyric, isLoading, togglePlay, nextSong, prevSong, handleSeek } = useMusic();
   const [displayedLyric, setDisplayedLyric] = useState("");
+  const [mobile] = useState(isMobile);
   // 🌟 初始化路由
   const router = useRouter();
 
   useEffect(() => {
+    if (mobile) {
+      // 移动端跳过逐字动画
+      setDisplayedLyric(currentLyric || "");
+      return;
+    }
     let i = 0;
     setDisplayedLyric("");
     const target = currentLyric || "";
@@ -33,7 +42,7 @@ export default function CloudPlayer() {
     }, 50);
 
     return () => clearInterval(typingInterval);
-  }, [currentLyric]);
+  }, [currentLyric, mobile]);
 
   if (isLoading) {
     return (
@@ -95,11 +104,11 @@ export default function CloudPlayer() {
         onClick={() => router.push('/music')}
         className="h-full w-full rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl p-6 flex flex-col justify-between transition-all duration-700 hover:scale-[1.02] relative group overflow-hidden cursor-pointer"
       >
-        <div className={`absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/20 blur-[50px] rounded-full transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-30'}`}></div>
+        <div className={`absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/20 blur-[50px] rounded-full transition-opacity duration-1000 hidden md:block ${isPlaying ? 'opacity-100' : 'opacity-30'}`}></div>
 
         <div className="flex items-center gap-5 relative z-10 mb-6 mt-2">
           <div
-            className="w-20 h-20 rounded-full border-2 border-white/50 shadow-lg flex-shrink-0 overflow-hidden relative animate-[spin_6s_linear_infinite]"
+            className={`w-20 h-20 rounded-full border-2 border-white/50 shadow-lg flex-shrink-0 overflow-hidden relative ${mobile ? '' : 'animate-[spin_6s_linear_infinite]'}`}
             style={{
               animationPlayState: isPlaying ? 'running' : 'paused',
               willChange: 'transform'

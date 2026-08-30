@@ -203,9 +203,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     });
   };
 
+    // 🌟 节流：timeupdate 触发频率约 4次/秒，Context 值一变所有消费组件全量重渲染，
+  // 是移动端卡顿主因。仅在整数秒变化时更新（1次/秒），视觉上无差异。
+  const lastSecondRef = useRef(-1);
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       const { currentTime, duration } = audioRef.current;
+      const sec = Math.floor(currentTime);
+      if (sec === lastSecondRef.current && duration) return;
+      lastSecondRef.current = sec;
       setCurrentTime(currentTime);
       setDuration(duration || 0);
       setProgress((currentTime / (duration || 1)) * 100);
@@ -233,7 +239,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const newProgress = Number(e.target.value);
     setProgress(newProgress);
     if (audioRef.current && audioRef.current.duration) {
-      audioRef.current.currentTime = (newProgress / 100) * audioRef.current.duration;
+      const t = (newProgress / 100) * audioRef.current.duration;
+      audioRef.current.currentTime = t;
+      lastSecondRef.current = Math.floor(t); // 同步节流基准，避免 seek 后 1 秒内进度不刷新
+      setCurrentTime(t);
     }
   };
 

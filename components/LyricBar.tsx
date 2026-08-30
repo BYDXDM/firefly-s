@@ -2,16 +2,23 @@
 import { useEffect, useState } from 'react';
 import { useMusic } from './MusicProvider';
 
+// 移动端性能：跳过逐字打字机动画（50ms/字的 setInterval 在手机上持续吃 CPU）
+const isMobile = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
 export default function LyricBar() {
   const { isPlaying, currentLyric, currentSong } = useMusic();
   const [displayedLyric, setDisplayedLyric] = useState("");
+  const [mobile] = useState(isMobile);
 
   useEffect(() => {
+    const targetText = currentLyric || "";
+    if (mobile) {
+      // 移动端直接显示整句
+      setDisplayedLyric(targetText);
+      return;
+    }
     setDisplayedLyric("");
     let i = 0;
-    const targetText = currentLyric || "";
-    if (!targetText) return;
-
     const typingInterval = setInterval(() => {
       if (i <= targetText.length) {
         setDisplayedLyric(targetText.slice(0, i));
@@ -22,7 +29,7 @@ export default function LyricBar() {
     }, 50);
 
     return () => clearInterval(typingInterval);
-  }, [currentLyric]);
+  }, [currentLyric, mobile]);
 
   if (!currentSong) return null;
 
@@ -57,18 +64,20 @@ export default function LyricBar() {
 
       <div className="w-full rounded-3xl bg-slate-900/80 dark:bg-slate-950/90 backdrop-blur-xl border border-white/10 shadow-2xl p-5 flex items-center justify-between transition-all duration-700 hover:shadow-indigo-500/20 group h-20">
 
-        {/* 1. 音频波形动态部分：改用统一渲染逻辑实现过渡 */}
+        {/* 1. 音频波形动态部分：移动端不跑无限 CSS 动画（省 GPU），桌面端保留 */}
         <div className="flex items-end justify-center gap-[4px] h-8 w-16">
           {waves.map((wave, index) => (
             <div
               key={index}
               className={`w-1.5 rounded-t-sm transition-all duration-500 ease-out ${
-                isPlaying 
-                  ? `${wave.color} safe-wave-active` 
+                isPlaying
+                  ? mobile
+                    ? 'h-5 bg-indigo-400'
+                    : `${wave.color} safe-wave-active`
                   : 'h-1 bg-slate-600 shadow-none'
               }`}
               style={{
-                animationDelay: wave.delay,
+                animationDelay: mobile ? undefined : wave.delay,
                 // 当暂停时，强制回到 4px 高度
                 height: isPlaying ? undefined : '4px'
               }}
