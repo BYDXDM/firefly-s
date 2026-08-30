@@ -79,6 +79,69 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [playMode, setPlayMode] = useState<PlayMode>('loop');
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const trackGainsRef = useRef<Record<string, number>>({});
+  const calibrationRef = useRef({ trackId: '', startedAt: 0, sumSquares: 0, samples: 0, done: false });
+
+  const ensureAudioGraph = () => {
+    const el = audioRef.current;
+    if (!el || typeof window === 'undefined') return null;
+    if (!audioContextRef.current) {
+      const context = new AudioContext();
+      const source = context.createMediaElementSource(el);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      const gain = context.createGain();
+      source.connect(gain).connect(analyser).connect(context.destination);
+      audioContextRef.current = context;
+      gainNodeRef.current = gain;
+      analyserRef.current = analyser;
+    }
+    return audioContextRef.current;
+  };
+
+  const applyOutputGain = (trackGain = 1) => {
+    const node = gainNodeRef.current;
+    const context = audioContextRef.current;
+    if (!node || !context) return;
+    const nextGain = isMuted ? 0 : volume * trackGain;
+    node.gain.setTargetAtTime(nextGain, context.currentTime, 0.05);
+  };
+
+  const calibrateCurrentTrack = (trackId: string) => {
+    const analyser = analyserRef.current;
+    if (!analyser || trackGainsRef.current[trackId] || calibrationRef.current.trackId === trackId) {
+      applyOutputGain(trackGainsRef.current[trackId] || 1);
+      return;
+    }
+
+    const data = new Uint8Array(analyser.fftSize);
+    calibrationRef.current = { trackId, startedAt: performance.now(), sumSquares: 0, samples: 0, done: false };
+
+    const sample = (now: number) => {
+      const state = calibrationRef.current;
+      if (state.trackId !== trackId || state.done) return;
+      analyser.getByteTimeDomainData(data);
+      for (const value of data) {
+        const normalized = (value - 128) / 128;
+        state.sumSquares += normalized * normalized;
+      }
+      state.samples += data.length;
+
+      if (now - state.startedAt >= 1200 && state.samples > 0) {
+        const rms = Math.sqrt(state.sumSquares / state.samples);
+        const gain = Math.min(1.5, Math.max(0.65, 0.13 / Math.max(rms, 0.04)));
+        trackGainsRef.current[trackId] = gain;
+        state.done = true;
+        applyOutputGain(gain);
+        return;
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  };
 
   useEffect(() => {
     const localPlaylist = (siteConfig.localMusic || []).map((song, index) => ({
@@ -130,6 +193,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setProgress(0);
 
     if (isPlaying && audioRef.current) {
+      const context = ensureAudioGraph();
+      if (context?.state === 'suspended') void context.resume();
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => setIsPlaying(false));
@@ -140,10 +205,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 4. 同步音量到 audio 元素
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted]);
+    applyOutputGain(trackGainsRef.current[playlist[currentIndex]?.id] || 1);
+  }, [volume, isMuted, currentIndex, playlist]);
 
   // 🌟 togglePlay：先真正调用 play/pause，成功与否由 onPlay/onPause 事件回写状态，
   // 避免"按钮显示暂停但实际没播/还在播"的乐观更新错位
@@ -151,7 +214,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const el = audioRef.current;
     if (!el || !el.src) return;
     if (el.paused) {
-      el.play().catch(() => { /* 失败时 onPlay 不触发，按钮保持暂停态 */ });
+      const context = ensureAudioGraph();
+      if (context?.state === 'suspended') void context.resume();
+      el.play().then(() => calibrateCurrentTrack(playlist[currentIndex]?.id)).catch(() => { /* 失败时 onPlay 不触发，按钮保持暂停态 */ });
     } else {
       el.pause();
     }
@@ -180,7 +245,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // 切歌后自动播放：等 src 切换、音频就绪后再 play，由 onPlay 事件驱动按钮状态
     requestAnimationFrame(() => {
       const el = audioRef.current;
-      if (el) { el.play().catch(() => { /* 自动播放被拦截时保持暂停态 */ }); }
+      if (el) {
+        const context = ensureAudioGraph();
+        if (context?.state === 'suspended') void context.resume();
+        el.play().then(() => calibrateCurrentTrack(playlist[index]?.id)).catch(() => { /* 自动播放被拦截时保持暂停态 */ });
+      }
     });
   };
 
@@ -210,7 +279,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const handleEnded = () => {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
-       audioRef.current.play();
+       const context = ensureAudioGraph();
+       if (context?.state === 'suspended') void context.resume();
+       audioRef.current.play().then(() => calibrateCurrentTrack(playlist[currentIndex]?.id));
     } else {
        nextSong();
     }
@@ -259,7 +330,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded} // 使用我们重写的结束处理
           onLoadedMetadata={handleTimeUpdate}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => {
+            setIsPlaying(true);
+            calibrateCurrentTrack(currentSong.id);
+          }}
           onPause={() => setIsPlaying(false)}
         />
       )}
