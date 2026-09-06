@@ -23,10 +23,37 @@ import ClientTOC from '../../../components/ClientTOC';
 import BackButton from '../../../components/BackButton';
 import Comments from '../../../components/Comments';
 import SidebarLyric from '../../../components/SidebarLyric';
-import { getPostSlugs, getRecentPostLinks } from '../../../lib/content';
+import { getPostSlugs, getRecentPostLinks, getSortedPosts } from '../../../lib/content';
 
 export async function generateStaticParams() {
   return getPostSlugs().map((slug) => ({ slug }));
+}
+
+// 每篇文章的分享卡片用自己的标题/描述/封面（OG），QQ/微信/Twitter 转发时直接出图
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  try {
+    const post = getSortedPosts().find((p) => p.slug === slug);
+    if (!post) return { title: '文章未找到 | ' + siteConfig.title };
+    return {
+      title: post.title + ' | ' + siteConfig.title,
+      description: post.description || siteConfig.bio,
+      openGraph: {
+        title: post.title,
+        description: post.description || siteConfig.bio,
+        type: 'article',
+        images: [{ url: post.cover || siteConfig.defaultPostCover }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: post.title,
+        description: post.description || siteConfig.bio,
+        images: [post.cover || siteConfig.defaultPostCover],
+      },
+    };
+  } catch {
+    return { title: siteConfig.title };
+  }
 }
 
 function extractToc(content: string) {

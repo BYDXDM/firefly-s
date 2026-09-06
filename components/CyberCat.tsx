@@ -14,8 +14,71 @@ export default function CyberCat() {
 
   const chatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDraggingRef = useRef(false);
+  const spriteWrapRef = useRef<HTMLDivElement>(null);
 
-  // --- 📝 逐字打字机效果 ---
+  // 🔊 爱丽丝语音播报（浏览器自带 TTS，可在挂件上静音；仅点击触发的台词会开口）
+  const [voiceOn, setVoiceOn] = useState(true);
+  useEffect(() => {
+    try { setVoiceOn(localStorage.getItem('alice-voice') !== 'off'); } catch { /* ignore */ }
+  }, []);
+  const toggleVoice = () => {
+    setVoiceOn((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('alice-voice', next ? 'on' : 'off'); } catch { /* ignore */ }
+      if (!next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      return next;
+    });
+  };
+  const ttsSpeak = (text: string) => {
+    if (!voiceOn || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      const clean = text.replace(/\s+/g, ' ').replace(/[♪♫]/g, '').slice(0, 140);
+      if (!clean.trim()) return;
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const utter = new SpeechSynthesisUtterance(clean);
+      utter.lang = 'zh-CN';
+      utter.rate = 1.05;
+      utter.pitch = 1.3;
+      const zhVoice = synth.getVoices().find((v) => v.lang.startsWith('zh'));
+      if (zhVoice) utter.voice = zhVoice;
+      synth.speak(utter);
+    } catch { /* TTS 失败不影响文字气泡 */ }
+  };
+
+  // --- 💬 说话功能 ---
+  const speak = (text: string, duration = 8000) => {
+    setSpeech(text);
+    ttsSpeak(text);
+    if (chatTimeoutRef.current) clearTimeout(chatTimeoutRef.current);
+    chatTimeoutRef.current = setTimeout(() => {
+      setSpeech(null);
+    }, duration);
+  };
+
+  // 📅 日期彩蛋：生日 / 节日专属台词
+  const getDateSpecialLines = (): string[] | null => {
+    const now = new Date();
+    const key = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (key === '03-25') return [
+      "今天…是爱丽丝的生日！Sensei，要一起切蛋糕吗？好耶！！",
+      "成就【被世界祝福的英雄】达成！嘿嘿，谢谢Sensei记得爱丽丝的生日～",
+    ];
+    if (key === '12-24' || key === '12-25') return [
+      "平安夜快乐，Sensei！爱丽丝把草莓牛奶留了一瓶给你！",
+      "叮叮当…英雄的圣诞特别任务：陪Sensei过圣诞节！",
+    ];
+    if (key === '01-01' || key === '01-02' || key === '01-03') return [
+      "新年好耶！！新的一年，爱丽丝也会是Sensei的英雄！",
+      "Sensei，新年快乐！今年的主线任务：一起变得更强！",
+    ];
+    if (key === '09-10') return [
+      "教师节快乐，Sensei！爱丽丝以英雄的名义，向你敬礼！",
+    ];
+    return null;
+  };
   useEffect(() => {
     if (!speech) {
       setDisplayedSpeech('');
@@ -34,15 +97,6 @@ export default function CyberCat() {
     return () => clearInterval(interval);
   }, [speech]);
 
-  // --- 💬 说话功能 ---
-  const speak = (text: string, duration = 8000) => {
-    setSpeech(text);
-    if (chatTimeoutRef.current) clearTimeout(chatTimeoutRef.current);
-    chatTimeoutRef.current = setTimeout(() => {
-      setSpeech(null);
-    }, duration);
-  };
-
   // --- 🖱️ 交互事件：摸猫猫 ---
   const petLines = [
     "诶嘿嘿…被Sensei摸头的话，爱丽丝会充满干劲的！攻击力暂时提升！",
@@ -59,7 +113,9 @@ export default function CyberCat() {
     if (isPetted) return;
     setIsPetted(true);
     setCatMood('happy');
-    speak(petLines[Math.floor(Math.random() * petLines.length)], 3000);
+    const special = getDateSpecialLines();
+    const pool = special && Math.random() < 0.6 ? special : petLines;
+    speak(pool[Math.floor(Math.random() * pool.length)], 3000);
     setTimeout(() => {
       setIsPetted(false);
       setCatMood('idle');
@@ -255,6 +311,15 @@ export default function CyberCat() {
               </svg>
             </button>
 
+            {/* 🔊 语音开关 */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleVoice(); }}
+              className="bg-white/90 dark:bg-slate-700/90 p-2 rounded-full shadow-md hover:scale-110 active:scale-95 transition-transform border border-gray-100 dark:border-slate-600 text-indigo-500 flex items-center justify-center backdrop-blur-sm"
+              title={voiceOn ? '关闭语音' : '开启语音'}
+            >
+              <span className="text-base leading-none">{voiceOn ? '🔊' : '🔇'}</span>
+            </button>
+
             {/* 🍓 喂食按钮 */}
             <button
               onClick={handleFeed}
@@ -268,8 +333,18 @@ export default function CyberCat() {
 
         {/* 爱丽丝立绘容器 */}
         <div
-          className="w-[96px] h-[140px] sm:w-[140px] sm:h-[210px] relative cursor-pointer"
+          ref={spriteWrapRef}
+          className="w-[96px] h-[140px] sm:w-[140px] sm:h-[210px] relative cursor-pointer transition-transform duration-200 ease-out"
+          style={{ perspective: '400px' }}
           onClick={handlePetCat}
+          onMouseMove={(e) => {
+            const el = spriteWrapRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const dx = (e.clientX - rect.left) / rect.width - 0.5;
+            el.style.transform = `rotateY(${(dx * 16).toFixed(1)}deg)`;
+          }}
+          onMouseLeave={() => { if (spriteWrapRef.current) spriteWrapRef.current.style.transform = ''; }}
         >
           <style>{`
             @keyframes spin-slow {
@@ -286,6 +361,10 @@ export default function CyberCat() {
               background-size: contain;
               background-position: center bottom;
               background-repeat: no-repeat;
+            }
+            /* 🌙 夜间差分：月光滤镜 */
+            html.dark .cat-sprite {
+              filter: brightness(0.88) saturate(0.92) drop-shadow(0 14px 20px rgba(30, 27, 75, 0.55));
             }
             /* 单张立绘：不再做精灵图帧动画，改用轻量浮动/摇摆（合成器动画） */
             .cat-idle {

@@ -14,6 +14,8 @@ import CyberCat from '../components/CyberCat';
 import DanmakuBackground from '../components/DanmakuBackground';
 import MobileBackButton from '../components/MobileBackButton';
 import GlobalSearch from '../components/GlobalSearch';
+import MomoTalkNotice from '../components/MomoTalkNotice';
+import { getSortedPosts } from '../lib/content';
 
 export const metadata: Metadata = {
   title: siteConfig.title,
@@ -21,6 +23,25 @@ export const metadata: Metadata = {
   icons: {
     icon: siteConfig.faviconUrl,
     apple: siteConfig.faviconUrl,
+  },
+  manifest: '/manifest.json',
+  alternates: {
+    types: { 'application/rss+xml': '/rss.xml' },
+  },
+  openGraph: {
+    title: siteConfig.title,
+    description: siteConfig.bio,
+    url: 'https://firefly-s.vercel.app',
+    siteName: siteConfig.title,
+    locale: 'zh_CN',
+    type: 'website',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: siteConfig.title }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteConfig.title,
+    description: siteConfig.bio,
+    images: ['/og-image.jpg'],
   },
 };
 
@@ -107,6 +128,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </MusicProvider>
 
           <CyberCat />
+
+          <MomoTalkNotice latest={getSortedPosts()[0] ? { slug: getSortedPosts()[0].slug, title: getSortedPosts()[0].title, formattedDate: getSortedPosts()[0].formattedDate } : null} />
 
           <GlobalSearch />
 
