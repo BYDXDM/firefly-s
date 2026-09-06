@@ -4,6 +4,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AliceSpine from './AliceSpine';
 
+// 🎧 官方日配语音池（萌娘百科公共存储 · 女仆爱丽丝 CV 线，个人粉丝博客非商用）
+const VOICE_PET = [
+  '/voice/alice/lobby-1.mp3', '/voice/alice/lobby-2.mp3', '/voice/alice/lobby-3.mp3',
+  '/voice/alice/lobby-4.mp3', '/voice/alice/lobby-5.mp3',
+  '/voice/alice/memorial-1.mp3', '/voice/alice/memorial-2.mp3', '/voice/alice/memorial-3.mp3',
+  '/voice/alice/memorial-4.mp3', '/voice/alice/memorial-5.mp3',
+];
+const VOICE_FEED = [
+  '/voice/alice/gachaget.mp3', '/voice/alice/cafe-1.mp3',
+  '/voice/alice/cafe-2.mp3', '/voice/alice/cafe-3.mp3',
+];
+// 节日专属语音（与日期彩蛋联动）
+const VOICE_SEASON: Record<string, string> = {
+  '03-25': '/voice/alice/season-birthday.mp3',
+  '10-31': '/voice/alice/season-halloween.mp3',
+  '12-24': '/voice/alice/season-xmas.mp3',
+  '12-25': '/voice/alice/season-xmas.mp3',
+  '01-01': '/voice/alice/season-newyear.mp3',
+  '01-02': '/voice/alice/season-newyear.mp3',
+  '01-03': '/voice/alice/season-newyear.mp3',
+};
+
 export default function CyberCat() {
   const [isPetted, setIsPetted] = useState(false);
   const [speech, setSpeech] = useState<string | null>(null);
@@ -57,10 +79,26 @@ export default function CyberCat() {
     } catch { /* TTS 失败不影响文字气泡 */ }
   };
 
+  // 🎧 播放官方日配语音（有语音文件时优先于 TTS）
+  const audioCache = useRef<Record<string, HTMLAudioElement>>({});
+  const playVoice = (src: string) => {
+    if (!voiceOn) return;
+    try {
+      let audio = audioCache.current[src];
+      if (!audio) {
+        audio = new Audio(src);
+        audioCache.current[src] = audio;
+      }
+      audio.currentTime = 0;
+      audio.play().catch(() => { /* 自动播放被拦截时静默 */ });
+    } catch { /* ignore */ }
+  };
+
   // --- 💬 说话功能 ---
-  const speak = (text: string, duration = 8000) => {
+  const speak = (text: string, duration = 8000, voiceSrc?: string) => {
     setSpeech(text);
-    ttsSpeak(text);
+    if (voiceSrc) playVoice(voiceSrc);
+    else ttsSpeak(text);
     if (chatTimeoutRef.current) clearTimeout(chatTimeoutRef.current);
     chatTimeoutRef.current = setTimeout(() => {
       setSpeech(null);
@@ -68,12 +106,18 @@ export default function CyberCat() {
   };
 
   // 📅 日期彩蛋：生日 / 节日专属台词
-  const getDateSpecialLines = (): string[] | null => {
+  const getSeasonKey = () => {
     const now = new Date();
-    const key = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+  const getDateSpecialLines = (): string[] | null => {
+    const key = getSeasonKey();
     if (key === '03-25') return [
       "今天…是爱丽丝的生日！Sensei，要一起切蛋糕吗？好耶！！",
       "成就【被世界祝福的英雄】达成！嘿嘿，谢谢Sensei记得爱丽丝的生日～",
+    ];
+    if (key === '10-31') return [
+      "不给糖就捣蛋！…爱丽丝第一次过万圣节，糖和草莓牛奶可以互换吗？",
     ];
     if (key === '12-24' || key === '12-25') return [
       "平安夜快乐，Sensei！爱丽丝把草莓牛奶留了一瓶给你！",
@@ -125,7 +169,9 @@ export default function CyberCat() {
     setPetSignal((c) => c + 1);
     const special = getDateSpecialLines();
     const pool = special && Math.random() < 0.6 ? special : petLines;
-    speak(pool[Math.floor(Math.random() * pool.length)], 3000);
+    // 节日当天优先播节日专属语音，否则随机大厅/羁绊语音
+    const voiceSrc = VOICE_SEASON[getSeasonKey()] ?? VOICE_PET[Math.floor(Math.random() * VOICE_PET.length)];
+    speak(pool[Math.floor(Math.random() * pool.length)], 3000, voiceSrc);
     setTimeout(() => {
       setIsPetted(false);
       setCatMood('idle');
@@ -154,7 +200,11 @@ export default function CyberCat() {
       const data = await res.json();
       setCatMood('happy');
       setPetSignal((c) => c + 1);
-      speak(`咕嘟咕嘟… 好耶！草莓牛奶补给完成！\n\n${data.reply}`, 8000);
+      speak(
+        `咕嘟咕嘟… 好耶！草莓牛奶补给完成！\n\n${data.reply}`,
+        8000,
+        VOICE_FEED[Math.floor(Math.random() * VOICE_FEED.length)]
+      );
       setTimeout(() => setCatMood('idle'), 8000);
     } catch (error) {
       setCatMood('idle');
