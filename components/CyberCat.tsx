@@ -25,6 +25,8 @@ const VOICE_SEASON: Record<string, string> = {
   '01-02': '/voice/alice/season-newyear.mp3',
   '01-03': '/voice/alice/season-newyear.mp3',
 };
+// 🎧 待机专属：游戏内「大厅」语音线（lobby-1~5，即游戏里的待机触摸语音）
+const VOICE_IDLE = VOICE_PET.slice(0, 5);
 
 export default function CyberCat() {
   const [isPetted, setIsPetted] = useState(false);
@@ -274,7 +276,7 @@ export default function CyberCat() {
     }
   };
 
-  // --- ⏳ 随机挂机语录 ---
+  // --- ⏳ 随机挂机语录（配游戏内大厅日配语音，避免中文 TTS 待机） ---
   useEffect(() => {
     const randomBarks = [
       "今天也是适合推主线的好天气！",
@@ -286,7 +288,7 @@ export default function CyberCat() {
     const randomTalkInterval = setInterval(() => {
       if (!speech && !showInput && !isThinking && Math.random() > 0.8) {
         const randomMsg = randomBarks[Math.floor(Math.random() * randomBarks.length)];
-        speak(randomMsg, 4000);
+        speak(randomMsg, 4000, VOICE_IDLE[Math.floor(Math.random() * VOICE_IDLE.length)]);
       }
     }, 20000);
 

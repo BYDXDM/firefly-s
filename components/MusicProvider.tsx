@@ -123,6 +123,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
+    } else {
+      // 本地曲目无歌词：给出明确的"纯享音乐"状态，别把"正在缓冲"永远留在屏上
+      if (isMounted) setCurrentLyric("♪ 纯享音乐 ♪");
     }
 
     // 切歌：先复位播放状态，避免旧歌状态残留（进度条/按钮错位）
