@@ -18,6 +18,8 @@ import MomoTalkNotice from '../components/MomoTalkNotice';
 import { getSortedPosts } from '../lib/content';
 
 export const metadata: Metadata = {
+  // OG 相对地址（og-image 等）的解析基准；不设置会退化成当前 host（dev 下是 localhost，分享图会失效）
+  metadataBase: new URL('https://firefly-s.vercel.app'),
   title: siteConfig.title,
   description: siteConfig.bio,
   icons: {
