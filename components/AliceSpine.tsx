@@ -32,7 +32,10 @@ export default function AliceSpine({
     (async () => {
       try {
         const PIXI: any = await import('pixi.js');
-        const { Spine }: any = await import('@esotericsoftware/spine-pixi');
+        // 官方 spine-pixi 只有 4.x 运行时（读不了 3.8 骨架，报 "String in string table must not be null"）；
+        // 资产是 Spine 3.8.96 二进制，改用 @pixi-spine/all-3.8（pixijs 官方 3.8 运行时）
+        const { Spine, TextureAtlas, AtlasAttachmentLoader, SkeletonBinary }: any =
+          await import('@pixi-spine/all-3.8');
 
         if (destroyed) return;
         const app = new PIXI.Application({
@@ -50,13 +53,61 @@ export default function AliceSpine({
         el.appendChild(canvas);
         appRef.current = app;
 
-        // 官方 spine-pixi 运行时：先用它注册的解析器预载骨架(→Uint8Array)与图集(→TextureAtlas，连带加载贴图)，
-        // 再调用 Spine.from 从 pixi Assets 缓存同步构建
-        await PIXI.Assets.load(['/spine/alice/Aris_home.skel', '/spine/alice/Aris_home.atlas']);
+        // 手动组装：并行取两页贴图 + 图集原文 + 骨架二进制。
+        // 不走 Assets 自动 loader——它对多页 atlas 的贴图自动加载不可靠（整只渲染成白色），
+        // images 元数据路径返回的 atlas 又缺 findRegion，手动构建是唯一稳妥路径
+        const [tex1, tex2, atlasText, skelBuf]: any[] = await Promise.all([
+          PIXI.Assets.load('/spine/alice/Aris_home.png'),
+          PIXI.Assets.load('/spine/alice/Aris_home2.png'),
+          fetch('/spine/alice/Aris_home.atlas').then((r) => r.text()),
+          fetch('/spine/alice/Aris_home.skel').then((r) => r.arrayBuffer()),
+        ]);
         if (destroyed) return;
-        const spine: any = Spine.from('/spine/alice/Aris_home.skel', '/spine/alice/Aris_home.atlas');
+        const textures: Record<string, any> = {
+          'Aris_home.png': tex1.baseTexture,
+          'Aris_home2.png': tex2.baseTexture,
+        };
+        const atlas = new TextureAtlas(
+          atlasText,
+          (line: string, callback: (t: any) => void) => callback(textures[line] || textures['Aris_home.png']),
+          () => { /* 构建完成回调（pixi-spine 签名的第三参） */ },
+        );
+        const attachmentLoader = new AtlasAttachmentLoader(atlas);
+        const binary = new SkeletonBinary(attachmentLoader);
+        const spineData = binary.readSkeletonData(new Uint8Array(skelBuf));
+        const spine: any = new Spine(spineData);
         spineRef.current = spine;
         app.stage.addChild(spine);
+
+        // 模型自带房间场景（背景/三盏灯/椅子/双光环/顶部光效，共 8 个场景插槽），
+        // 场景把可见范围撑到 12944 单位宽，不隐藏的话自动拟合会把镜头拉成全景条。
+        // 挂件里只保留角色本体：attachment 置空 + color.a=0。
+        // 注意遍历 spine.skeleton.slots（运行时活实例），spineData.slots 只是 SlotData 定义
+        const SCENE_SLOT = /^(background|game_light_\d+|chair|halo \d+|top_light)$/i;
+        const hiddenSlots: any[] = [];
+        for (const slot of spine.skeleton?.slots || []) {
+          // pixi-spine 的 Slot 实例没有 .name，名字在 slot.data.name 上
+          const slotName: string = slot?.data?.name ?? slot?.name ?? '';
+          if (SCENE_SLOT.test(slotName)) {
+            try { slot.setAttachment(null); } catch { /* ignore */ }
+            try { slot.color.a = 0; } catch { /* ignore */ }
+            hiddenSlots.push(slot);
+          }
+        }
+        // 动画播放中 attachment/color 时间线会把场景插槽复活（表现为一整块白布盖住角色），
+        // 每帧渲染前强制压制一次
+        if (hiddenSlots.length) {
+          app.ticker.add(
+            () => {
+              for (const s of hiddenSlots) {
+                if (s.attachment) { try { s.setAttachment(null); } catch { /* ignore */ } }
+                if (s.color && s.color.a !== 0) s.color.a = 0;
+              }
+            },
+            undefined,
+            PIXI.UPDATE_PRIORITY.LOW
+          );
+        }
 
         // 动画分组：优先 start_idle_01 常驻循环（与 BA 官方查看器一致），tap 组用于摸头/喂食插播
         const names: string[] = (spine.spineData?.animations || []).map((a: any) => a.name);
@@ -104,39 +155,43 @@ export default function AliceSpine({
           } catch { return null; }
         };
 
-        // 第一步：1 倍缩放渲染一帧，采样"真正画出来了"的内容范围（单位坐标系）
-        let unitBox: { x: number; y: number; w: number; h: number } | null = null;
-        try {
-          const w = el.clientWidth || 140, h = el.clientHeight || 210;
-          app.renderer.resize(w, h);
-          spine.scale.set(1);
-          spine.position.set(0, 0);
-          app.render();
-          const px = sampleAlphaBBox();
-          if (px && px.w > 2 && px.h > 2) {
-            unitBox = { x: px.x / 1, y: px.y / 1, w: px.w / 1, h: px.h / 1 };
-          }
-        } catch { /* 采样失败走 bounds 兜底 */ }
-
-        if (!unitBox) {
-          const b = spine.getBounds();
-          if (b && isFinite(b.width) && b.width > 1) unitBox = { x: b.x, y: b.y, w: b.width, h: b.height };
-        }
-
-        /** 按 unitBox 等比缩放、底部居中 */
-        const applyFit = () => {
-          if (!unitBox) return;
+        // 两段式拟合，全程在画布空间做仿射修正，不碰骨骼单位坐标系（规避 spine 与 pixi 的 y 轴翻转差异）：
+        // 1) 先把声明范围整体居中投进画布（居中锚点下内容必落在画布内，且与翻转方向无关）
+        // 2) 采样角色实际占用的画布区域，等比放大到 92% 画布，把角色底边中心锚到画布底部
+        const fitToCanvas = () => {
           const w = el.clientWidth || 140;
           const h = el.clientHeight || 210;
           app.renderer.resize(w, h);
-          const s = Math.min(Math.min(w / unitBox.w, h / unitBox.h) * 0.92, 3);
-          if (!isFinite(s) || s <= 0) return;
-          spine.scale.set(s);
-          spine.position.set(w / 2 - (unitBox.x + unitBox.w / 2) * s, h - 2 - (unitBox.y + unitBox.h) * s);
-          dbg(`fit: canvas=${w}x${h} unitBox=${unitBox.w.toFixed(0)}x${unitBox.h.toFixed(0)} @(${unitBox.x.toFixed(0)},${unitBox.y.toFixed(0)}) scale=${s.toFixed(3)} anims=${names.length} idle=${idle}`);
+          const declared = spine.getBounds();
+          if (!declared || !isFinite(declared.width) || declared.width <= 1) return;
+          const s0 = Math.min(w / declared.width, h / declared.height);
+          const p0x = w / 2 - (declared.x + declared.width / 2) * s0;
+          const p0y = h / 2 - (declared.y + declared.height / 2) * s0;
+          spine.scale.set(s0);
+          spine.position.set(p0x, p0y);
+          app.render();
+          const px = sampleAlphaBBox();
+          // 采样不出内容，或内容几乎铺满画布（被大面积特效污染）时，保留粗适配结果
+          if (!px || px.w < 4 || px.h < 4) return;
+          if (px.w > w * 0.98 && px.h > h * 0.98) return;
+          // 第二段：内容点满足 C' = P1 + R·(C − P0)，据此反解新位移，把角色底边中心锚到画布底部
+          const R = Math.min((w * 0.92) / px.w, (h * 0.92) / px.h);
+          if (!isFinite(R) || R <= 0) return;
+          const cx = px.x + px.w / 2;
+          const by = px.y + px.h;
+          spine.scale.set(s0 * R);
+          spine.position.set(w / 2 - (cx - p0x) * R, h - 2 - (by - p0y) * R);
+          dbg(`fit: canvas=${w}x${h} px=${px.w.toFixed(0)}x${px.h.toFixed(0)} R=${R.toFixed(2)} scale=${(s0 * R).toFixed(4)} hidden=${hiddenSlots.length}`);
         };
-        applyFit();
-        const ro = new ResizeObserver(applyFit);
+        fitToCanvas();
+        if (debug) {
+          // 调试模式：同步渲染一帧并导出，供外部抓取查看拟合效果
+          try {
+            app.render();
+            (window as any).__spineShot = (app.view as HTMLCanvasElement).toDataURL('image/png');
+          } catch { /* 导出失败不影响运行 */ }
+        }
+        const ro = new ResizeObserver(fitToCanvas);
         ro.observe(el);
         cleanupResize = () => ro.disconnect();
 
