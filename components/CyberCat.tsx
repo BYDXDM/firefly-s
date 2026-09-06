@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AliceSpine from './AliceSpine';
 
 export default function CyberCat() {
   const [isPetted, setIsPetted] = useState(false);
@@ -11,6 +12,14 @@ export default function CyberCat() {
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [catMood, setCatMood] = useState<'idle' | 'happy' | 'thinking'>('idle');
+
+  // 🎞 Spine 看板娘：仅桌面端启用，失败自动回退静态立绘
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [spineState, setSpineState] = useState<'pending' | 'ready' | 'failed'>('pending');
+  const [petSignal, setPetSignal] = useState(0);
+  useEffect(() => {
+    try { setIsDesktop(window.matchMedia('(min-width: 640px)').matches); } catch { /* ignore */ }
+  }, []);
 
   const chatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDraggingRef = useRef(false);
@@ -113,6 +122,7 @@ export default function CyberCat() {
     if (isPetted) return;
     setIsPetted(true);
     setCatMood('happy');
+    setPetSignal((c) => c + 1);
     const special = getDateSpecialLines();
     const pool = special && Math.random() < 0.6 ? special : petLines;
     speak(pool[Math.floor(Math.random() * pool.length)], 3000);
@@ -143,6 +153,7 @@ export default function CyberCat() {
 
       const data = await res.json();
       setCatMood('happy');
+      setPetSignal((c) => c + 1);
       speak(`咕嘟咕嘟… 好耶！草莓牛奶补给完成！\n\n${data.reply}`, 8000);
       setTimeout(() => setCatMood('idle'), 8000);
     } catch (error) {
@@ -385,7 +396,18 @@ export default function CyberCat() {
               50% { transform: rotate(4deg) scale(1.05); }
             }
           `}</style>
-          <div className={`cat-sprite drop-shadow-2xl ${isPetted ? 'cat-petted' : isThinking ? 'cat-thinking' : 'cat-idle'}`} />
+          {isDesktop && spineState !== 'failed' && (
+            <div className={`absolute inset-0 pointer-events-none ${isPetted ? 'cat-petted' : isThinking ? 'cat-thinking' : 'cat-idle'}`}>
+              <AliceSpine
+                playSignal={petSignal}
+                onReady={() => setSpineState('ready')}
+                onError={() => setSpineState('failed')}
+              />
+            </div>
+          )}
+          <div
+            className={`cat-sprite drop-shadow-2xl transition-opacity duration-700 ${spineState === 'ready' ? 'opacity-0' : 'opacity-100'} ${isPetted ? 'cat-petted' : isThinking ? 'cat-thinking' : 'cat-idle'}`}
+          />
         </div>
       </div>
 
