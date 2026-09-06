@@ -778,7 +778,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <textarea
                       required
-                      placeholder="在这里挥洒你的汗水与墨水吧！\n\n## 甚至可以用 Markdown 语法噢喵呜~\n- 点两下回车开辟新天地。\n- 输入你的 GROMACS 模拟经验，或者泰拉大陆的源石病机制研究..."
+                      placeholder="在这里挥洒你的汗水与墨水吧！\n\n## 甚至可以用 Markdown 语法噢喵呜~\n- 点两下回车开辟新天地。\n- 输入你的 GROMACS 模拟经验，或者泰拉大陆的矿石病机制研究..."
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       rows={12}
