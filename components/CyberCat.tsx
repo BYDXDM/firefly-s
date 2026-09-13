@@ -130,7 +130,14 @@ const VOICE_SEASON: Record<string, string> = {
 // 教师节没有官方节日语音，借记忆大厅3「这也都是多亏了老师」的致谢线
 const VOICE_TEACHERS_DAY = '/voice/alice/memorial-3.mp3';
 
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = <T,>(items: T[]): T[] => {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+};
 
 const getReplyText = (data: unknown): string => {
   if (data && typeof data === 'object' && 'reply' in data && typeof data.reply === 'string') {
@@ -157,6 +164,7 @@ export default function CyberCat() {
   const requestOpRef = useRef(0);
   const mountedRef = useRef(true);
   const petResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const voiceQueuesRef = useRef<Record<string, string[]>>({});
   const isDraggingRef = useRef(false);
   const spriteWrapRef = useRef<HTMLDivElement>(null);
 
@@ -306,6 +314,12 @@ export default function CyberCat() {
   }, []);
 
   // 📅 日期彩蛋：生日 / 节日专属台词
+  const nextVoice = (pool: string[], poolName: string): string => {
+    const queue = voiceQueuesRef.current[poolName] ?? [];
+    if (queue.length === 0) voiceQueuesRef.current[poolName] = shuffle(pool);
+    return voiceQueuesRef.current[poolName].pop() as string;
+  };
+
   const getSeasonKey = () => {
     const now = new Date();
     return `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -341,7 +355,7 @@ export default function CyberCat() {
     setIsPetted(true);
     setCatMood('happy');
     setIsBusy(true);
-    speakVoice(getSeasonVoice() ?? pickRandom(POOL_PET), () => {
+    speakVoice(getSeasonVoice() ?? nextVoice(POOL_PET, 'pet'), () => {
       setIsBusy(false);
       setIsPetted(false);
       setCatMood('idle');
@@ -380,7 +394,7 @@ export default function CyberCat() {
       setCatMood('happy');
       // 先播放一条官方语音（日文音频 + 中文翻译），语音播完再显示 AI 的 English reply，
       // 保证字幕全程都跟着正在播放的声音走
-      speakVoice(pickRandom(POOL_FEED), () => {
+      speakVoice(nextVoice(POOL_FEED, 'feed'), () => {
         setCatMood('idle');
         speakText(reply, 9000, () => {
           setIsThinking(false);
@@ -479,7 +493,7 @@ export default function CyberCat() {
   useEffect(() => {
     const randomTalkInterval = setInterval(() => {
       if (!speech && !showInput && !isThinking && !isBusy && Math.random() > 0.8) {
-        speakVoice(pickRandom(POOL_IDLE));
+        speakVoice(nextVoice(POOL_IDLE, 'idle'));
       }
     }, 20000);
 
