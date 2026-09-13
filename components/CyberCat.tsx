@@ -168,6 +168,7 @@ export default function CyberCat() {
   const petResetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const voiceQueuesRef = useRef<Record<string, string[]>>({});
   const lastVoiceRef = useRef<string | null>(null);
+  const voiceTriggerCountRef = useRef(0);
   const isDraggingRef = useRef(false);
   const spriteWrapRef = useRef<HTMLDivElement>(null);
 
@@ -325,21 +326,17 @@ export default function CyberCat() {
     return next;
   };
 
-  // 邦吧咔邦是高频彩蛋，但不会连续重复；普通语音仍按洗牌队列轮播。
-  const nextPetVoice = (): string => {
-    if (lastVoiceRef.current !== VOICE_BANG && Math.random() < 0.5) {
+  // 邦吧咔邦是最高频语音：每三次普通语音触发一次，且不会连续重复。
+  const nextFrequentVoice = (pool: string[], poolName: string): string => {
+    voiceTriggerCountRef.current += 1;
+    if (
+      voiceTriggerCountRef.current % 3 === 0
+      && lastVoiceRef.current !== VOICE_BANG
+    ) {
       lastVoiceRef.current = VOICE_BANG;
       return VOICE_BANG;
     }
-    return nextVoice(POOL_PET, 'pet');
-  };
-
-  const nextIdleVoice = (): string => {
-    if (lastVoiceRef.current !== VOICE_BANG && Math.random() < 0.5) {
-      lastVoiceRef.current = VOICE_BANG;
-      return VOICE_BANG;
-    }
-    return nextVoice(POOL_IDLE, 'idle');
+    return nextVoice(pool, poolName);
   };
 
   const getSeasonKey = () => {
@@ -377,7 +374,7 @@ export default function CyberCat() {
     setIsPetted(true);
     setCatMood('happy');
     setIsBusy(true);
-    speakVoice(getSeasonVoice() ?? nextPetVoice(), () => {
+    speakVoice(getSeasonVoice() ?? nextFrequentVoice(POOL_PET, 'pet'), () => {
       setIsBusy(false);
       setIsPetted(false);
       setCatMood('idle');
@@ -416,7 +413,7 @@ export default function CyberCat() {
       setCatMood('happy');
       // 先播放一条官方语音（日文音频 + 中文翻译），语音播完再显示 AI 的 English reply，
       // 保证字幕全程都跟着正在播放的声音走
-      speakVoice(nextVoice(POOL_FEED, 'feed'), () => {
+      speakVoice(nextFrequentVoice(POOL_FEED, 'feed'), () => {
         setCatMood('idle');
         speakText(reply, 9000, () => {
           setIsThinking(false);
@@ -515,7 +512,7 @@ export default function CyberCat() {
   useEffect(() => {
     const randomTalkInterval = setInterval(() => {
       if (!speech && !showInput && !isThinking && !isBusy && Math.random() > 0.8) {
-        speakVoice(nextIdleVoice());
+        speakVoice(nextFrequentVoice(POOL_IDLE, 'idle'));
       }
     }, 20000);
 
