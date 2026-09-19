@@ -326,11 +326,11 @@ export default function CyberCat() {
     return next;
   };
 
-  // 邦吧咔邦是最高频语音：每三次普通语音触发一次，且不会连续重复。
+  // 邦吧咔邦是最高频语音：每两次普通语音触发一次（摸头/喂食/待机共享计数），且不会连续重复。
   const nextFrequentVoice = (pool: string[], poolName: string): string => {
     voiceTriggerCountRef.current += 1;
     if (
-      voiceTriggerCountRef.current % 3 === 0
+      voiceTriggerCountRef.current % 2 === 0
       && lastVoiceRef.current !== VOICE_BANG
     ) {
       lastVoiceRef.current = VOICE_BANG;
