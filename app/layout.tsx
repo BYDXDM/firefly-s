@@ -74,10 +74,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <div id="app-mount-root" className="flex-1 flex flex-col transition-opacity duration-1000">
               <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
                 {!siteConfig.useGradient && <BackgroundSlider />}
-                <div className="absolute inset-0 z-[-9] bg-white/30 dark:bg-slate-900/40 backdrop-blur-md transition-colors duration-1000"></div>
+                <div className="absolute inset-0 z-[-9] bg-white/30 dark:bg-slate-900/40 backdrop-blur-md mobile-no-backdrop transition-colors duration-1000"></div>
 
                 {/* 性能：渐变流动改用 transform 位移动画（合成器执行），不再用 background-position 每帧全屏重绘 */}
-                <div className="absolute inset-0 z-[-8] opacity-60 dark:opacity-20 mix-blend-color transition-opacity duration-1000 overflow-hidden">
+                <div className="absolute inset-0 z-[-8] opacity-60 dark:opacity-20 mix-blend-color transition-opacity duration-1000 overflow-hidden mobile-static-gradient">
                   <div
                     className="absolute top-0 left-0 h-full w-[400%] transform-gpu"
                     style={{
@@ -87,8 +87,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   ></div>
                 </div>
 
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/40 dark:bg-indigo-900/20 blur-[100px] rounded-full z-[-7] md:mix-blend-overlay"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/30 dark:bg-purple-900/30 blur-[100px] rounded-full z-[-7] md:mix-blend-overlay"></div>
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/40 dark:bg-indigo-900/20 blur-[100px] rounded-full z-[-7] md:mix-blend-overlay mobile-hide-expensive"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/30 dark:bg-purple-900/30 blur-[100px] rounded-full z-[-7] md:mix-blend-overlay mobile-hide-expensive"></div>
 
                 <div className="hidden md:block absolute inset-0 w-full h-full">
                   <BackgroundEffects />
@@ -129,9 +129,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             `}} />
           </MusicProvider>
 
-          <CyberCat />
+          <div className="hidden md:block"><CyberCat /></div>
 
-          <MomoTalkNotice latest={getSortedPosts()[0] ? { slug: getSortedPosts()[0].slug, title: getSortedPosts()[0].title, formattedDate: getSortedPosts()[0].formattedDate } : null} />
+          <div className="hidden md:block"><MomoTalkNotice latest={getSortedPosts()[0] ? { slug: getSortedPosts()[0].slug, title: getSortedPosts()[0].title, formattedDate: getSortedPosts()[0].formattedDate } : null} /></div>
 
           <GlobalSearch />
 
