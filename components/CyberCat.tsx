@@ -26,7 +26,7 @@ export default function CyberCat() {
   const isDraggingRef = useRef(false);
   const spriteWrapRef = useRef<HTMLDivElement>(null);
 
-  // 🔊 语音引擎（browser TTS can be muted; only user-triggered lines speak）
+  // 🔊 语音引擎（只有官方日配 mp3 会发声；AI 回复/报错仅显示字幕）
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceOnRef = useRef(true);
   const engineRef = useRef<AliceVoiceEngine | null>(null);

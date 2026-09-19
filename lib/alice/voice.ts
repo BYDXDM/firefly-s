@@ -1,7 +1,8 @@
 // 🎧 爱丽丝语音引擎（deep module）
 // CyberCat 等 UI 只见得到小 interface：speakVoice / speakText / cancel / askAlice / pickVoice。
-// 藏在后面的是：操作计数取消语义、audioCache、音频元数据时长校正、TTS 兜底、
+// 藏在后面的是：操作计数取消语义、audioCache、音频元数据时长校正、
 // 官方语音的轮换池（洗牌不重复 + 邦吧咔邦隔次触发）以及 /api/chat 的对话请求折叠。
+// 只有一种声音：官方日配 mp3。AI 回复/报错等中文台词仅显示字幕、不发声（无浏览器 TTS）。
 // 台词与场景池数据见 data/alice-voice-lines.ts；取消语义必须整体使用，不可拆散。
 
 import {
@@ -14,7 +15,7 @@ export type AliceLine = { main: string; sub?: string };
 export interface AliceVoiceEngine {
   /** 播一条官方日配：日文原话 + 中文翻译字幕，时长跟随音频真实长度 */
   speakVoice(src: string, onDone?: () => void): void;
-  /** 纯文字台词（AI 回复 / 报错提示）：浏览器 TTS 兜底，字幕与语音同为中文 */
+  /** 纯文字台词（AI 回复 / 报错提示）：仅显示字幕，不发声 */
   speakText(text: string, duration?: number, onDone?: () => void): void;
   /** 取消当前字幕/语音/计时（操作计数 +1，之后所有旧回调作废） */
   cancel(): void;
@@ -68,23 +69,6 @@ export function createAliceVoiceEngine(options: AliceVoiceEngineOptions): AliceV
     });
   };
 
-  const ttsSpeak = (text: string) => {
-    if (!isVoiceOn() || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    try {
-      const clean = text.replace(/\s+/g, ' ').replace(/[♪♫]/g, '').slice(0, 140);
-      if (!clean.trim()) return;
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      const utter = new SpeechSynthesisUtterance(clean);
-      utter.lang = 'zh-CN';
-      utter.rate = 1.05;
-      utter.pitch = 1.3;
-      const zhVoice = synth.getVoices().find((v) => v.lang.startsWith('zh'));
-      if (zhVoice) utter.voice = zhVoice;
-      synth.speak(utter);
-    } catch { /* TTS 失败不影响文字气泡 */ }
-  };
-
   const ensureAudio = (src: string) => {
     let audio = audioCache[src];
     if (!audio) {
@@ -100,9 +84,6 @@ export function createAliceVoiceEngine(options: AliceVoiceEngineOptions): AliceV
       speechOp += 1;
       clearSpeechTimer();
       stopAllAudio();
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
       onLine(null);
     },
 
@@ -165,7 +146,6 @@ export function createAliceVoiceEngine(options: AliceVoiceEngineOptions): AliceV
         onLine(null);
         onDone?.();
       }, displayDuration);
-      ttsSpeak(text);
     },
 
     pickVoice(pool, poolName) {
