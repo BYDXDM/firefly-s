@@ -2,153 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createAliceVoiceEngine, type AliceVoiceEngine } from '@/lib/alice/voice';
+import {
+  POOL_PET, POOL_IDLE, POOL_FEED, pickSeasonVoice,
+} from '@/data/alice-voice-lines';
 
-// 🎧 official voice语音表（萌娘百科公共存储 · 女仆爱丽丝 CV 线，个人粉丝博客非商用）
-// 每条 mp3 都配好「官方日文台词 + 中文翻译」，台词与音频一一对应、不再各自随机，
-// 因此字幕说的就是语音正在说的话。dur 为实测时长（秒），仅在拿不到音频元数据时兜底。
-const VOICE: Record<string, { jp: string; cn: string; dur: number }> = {
-  "/voice/alice/lobby-1.mp3": {
-    jp: "今日のアリスはメイドであり勇者！つまりメイド勇者です！メイド勇者とは、メイドと勇者を極めた先にあります。RPGで例えるなら上級職です！",
-    cn: "今天的爱丽丝是女仆也是勇者！也就是女仆勇者！所谓女仆勇者，位于女仆和勇者极限的前方。用RPG来举例的话就是高等职业！",
-    dur: 15.5,
-  },
-  "/voice/alice/lobby-2.mp3": {
-    jp: "メイド服に着替えると、お掃除スキルが上がった気がします！先生、どこかお掃除するところはありますか？",
-    cn: "换上女仆装之后，感觉打扫技能升级了！老师，你有需要打扫的地方吗？",
-    dur: 9.1,
-  },
-  "/voice/alice/lobby-3.mp3": {
-    jp: "メイドは様々なお仕事をこなすと聞きました！お料理、お掃除、お洗濯♪破壊に強襲、警備に世界平和まで！",
-    cn: "听说女仆会做各种工作！料理、打扫、洗衣服♪从破坏到强袭，从警备到世界和平！",
-    dur: 9.5,
-  },
-  "/voice/alice/lobby-4.mp3": {
-    jp: "狙撃手にとって、平常心が大事だと聞きました。せ、先生？そんなに頭を撫でられると…………ふわぁ。アリスは平常心を失ってしまいました……",
-    cn: "听说对狙击手来说平常心是很重要的。老，老师？头被这样摸的话…………呼哇。爱丽丝失去了平常心……",
-    dur: 16.6,
-  },
-  "/voice/alice/lobby-5.mp3": {
-    jp: "先生、今日のスケジュールを教えてください！一日中、ゴロゴロするんですか……？え、アリスも……？はい！アリスもゴロゴロします！",
-    cn: "老师，请告诉爱丽丝你今天的行程！要耍废一整天是吗……？咦，爱丽丝也要……？是！爱丽丝也要耍废！",
-    dur: 14.1,
-  },
-  "/voice/alice/memorial-1.mp3": {
-    jp: "せ、先生！？アリス、まだ準備中なので……",
-    cn: "老，老师！？爱丽丝，还在准备中……",
-    dur: 6,
-  },
-  "/voice/alice/memorial-2.mp3": {
-    jp: "メイドを克服し、ジョブチェンジしたアリスの姿……先生に見せようと思ったのですが……アリスの支度が整うまで、もう少しだけ待っていてください。",
-    cn: "克服了对女仆的恐惧，转职后的爱丽丝的身姿……想让老师也看一看……在爱丽丝打理完成之前，还请稍微再等一会儿。",
-    dur: 14.6,
-  },
-  "/voice/alice/memorial-3.mp3": {
-    jp: "その通りです！もうメイドは怖くありません！これも全部、先生が居てくれたおかげです。",
-    cn: "就是这样！女仆已经没什么好怕的了！这也都是，多亏了老师的帮忙。",
-    dur: 8.8,
-  },
-  "/voice/alice/memorial-4.mp3": {
-    jp: "先生と一緒なら……アリスはどんなダンジョンでも攻略できますから。",
-    cn: "如果和老师在一起的话……爱丽丝感觉不管是什么地下城都可以攻略下来呢。",
-    dur: 7.1,
-  },
-  "/voice/alice/memorial-5.mp3": {
-    jp: "はいっ！アリス、冒険の準備が整いました！",
-    cn: "嗯！爱丽丝，已经准备好出发冒险了！",
-    dur: 4.8,
-  },
-  "/voice/alice/cafe-1.mp3": {
-    jp: "……どこからお掃除しましょう？",
-    cn: "从哪里开始打扫呢？",
-    dur: 2.4,
-  },
-  "/voice/alice/cafe-2.mp3": {
-    jp: "サブクエストが発生しそうな場所です……！",
-    cn: "是可能发生支线任务的地方……！",
-    dur: 2.9,
-  },
-  "/voice/alice/cafe-3.mp3": {
-    jp: "アリス、知ってます。世の中にはメイドカフェというものがあるらしいです！",
-    cn: "爱丽丝知道。世界上好像有女仆咖啡店！",
-    dur: 6.2,
-  },
-  // 「获得学生」线：本轮不挂在任何交互上（原先被误配给「喂食」，语义完全不符），
-  // 配对信息保留完整，日后想加「首次登场自我介绍」可直接取用
-  "/voice/alice/gachaget.mp3": {
-    jp: "メイドにジョブチェンジしても、アリスはアリスです。見ていてください、先生！",
-    cn: "即使换成女仆，爱丽丝也是爱丽丝。请看着，老师！",
-    dur: 6.5,
-  },
-  "/voice/alice/season-birthday.mp3": {
-    jp: "ゲーム開発部のみんな、そして先生と出会った日……あの日の出来事を、アリスは忘れません。先生、これからもよろしくお願いします！",
-    cn: "和游戏开发部的大家，还有老师相遇的日子……那天所发生的事情，爱丽丝不会忘记的。老师，今后也请你多多指教！",
-    dur: 15.9,
-  },
-  "/voice/alice/season-newyear.mp3": {
-    jp: "あけましておめでとうございます、先生！メイドアリスの初仕事、何が良いですか？……そばに居るだけで良いんですか？",
-    cn: "新年快乐，老师！女仆爱丽丝的第一项工作，该做什么好呢？……待在你旁边就好了吗？",
-    dur: 10.8,
-  },
-  "/voice/alice/season-xmas.mp3": {
-    jp: "アリス、知っています。ゲームでも現実でも、クリスマスはイベントの時間です！",
-    cn: "爱丽丝知道。无论是游戏还是现实，圣诞节就是活动的时间！",
-    dur: 6.7,
-  },
-  "/voice/alice/season-halloween.mp3": {
-    jp: "ハッピーハロウィーン！みんなでゲームのキャラクターみたいに仮装する日ですね！それとも……ゲームが現実になる日なのでしょうか？",
-    cn: "万圣节快乐！是大家一起打扮成游戏角色的日子呢还是……是游戏成为现实的日子？",
-    dur: 11.4,
-  },
-};
-
-// 🎧 场景语音池：只列 mp3 路径，台词与时长统一从 VOICE 表查，保证语音/字幕同源
-// 摸头：大厅4「被摸头会失去平常心」+ 记忆大厅的亲密触摸线
-const VOICE_BANG = '/voice/alice/gachaget.mp3';
-
-const POOL_PET = [
-  '/voice/alice/lobby-4.mp3',
-  '/voice/alice/memorial-1.mp3', '/voice/alice/memorial-3.mp3',
-  '/voice/alice/memorial-4.mp3', '/voice/alice/memorial-5.mp3',
-];
-// 待机：游戏内「大厅」语音线（lobby-1~5），是原作里站在主界面时会说的话
-const POOL_IDLE = [
-  '/voice/alice/lobby-1.mp3', '/voice/alice/lobby-2.mp3', '/voice/alice/lobby-3.mp3',
-  '/voice/alice/lobby-4.mp3', '/voice/alice/lobby-5.mp3',
-];
-// 喂食：咖啡厅独白（原作里女仆在咖啡厅的独白，与「吃的」语境最贴近）
-const POOL_FEED = [
-  '/voice/alice/cafe-1.mp3', '/voice/alice/cafe-2.mp3', '/voice/alice/cafe-3.mp3',
-];
-// 节日专属语音（与日期彩蛋联动）
-const VOICE_SEASON: Record<string, string> = {
-  '03-25': '/voice/alice/season-birthday.mp3',
-  '10-31': '/voice/alice/season-halloween.mp3',
-  '12-24': '/voice/alice/season-xmas.mp3',
-  '12-25': '/voice/alice/season-xmas.mp3',
-  '01-01': '/voice/alice/season-newyear.mp3',
-  '01-02': '/voice/alice/season-newyear.mp3',
-  '01-03': '/voice/alice/season-newyear.mp3',
-};
-// 教师节没有官方节日语音，借记忆大厅3「这也都是多亏了老师」的致谢线
-const VOICE_TEACHERS_DAY = '/voice/alice/memorial-3.mp3';
-
-const shuffle = <T,>(items: T[]): T[] => {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-};
-
-const getReplyText = (data: unknown): string => {
-  if (data && typeof data === 'object' && 'reply' in data && typeof data.reply === 'string') {
-    const reply = data.reply.trim().slice(0, 1000);
-    if (reply) return reply;
-  }
-  throw new Error('Invalid chat response');
-};
-
+// 🖼 看板娘：静态女仆爱丽丝立绘（Spine 动态版已回退，资源保留在 public/spine 备用）。
+// 本组件只负责 UI：拖拽 / 气泡打字机 / 交互按钮 / 情绪状态。
+// 语音播放、台词轮换、对话请求全部在 lib/alice/voice.ts，台词数据在 data/alice-voice-lines.ts。
 export default function CyberCat() {
   const [isPetted, setIsPetted] = useState(false);
   // speech.main = the displayed line; speech.sub = its 中文翻译
@@ -160,39 +21,44 @@ export default function CyberCat() {
   const [isBusy, setIsBusy] = useState(false);
   const [catMood, setCatMood] = useState<'idle' | 'happy' | 'thinking'>('idle');
 
-  // 🖼 看板娘：静态女仆爱丽丝立绘（Spine 动态版已回退，资源保留在 public/spine 备用）
-  const speechTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const speechOpRef = useRef(0);
-  const requestOpRef = useRef(0);
   const mountedRef = useRef(true);
   const petResetTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const voiceQueuesRef = useRef<Record<string, string[]>>({});
-  const lastVoiceRef = useRef<string | null>(null);
-  const voiceTriggerCountRef = useRef(0);
   const isDraggingRef = useRef(false);
   const spriteWrapRef = useRef<HTMLDivElement>(null);
 
-  // 🔊 爱丽丝voice playback (browser TTS can be muted; only user-triggered lines speak)
+  // 🔊 语音引擎（browser TTS can be muted; only user-triggered lines speak）
   const [voiceOn, setVoiceOn] = useState(true);
+  const voiceOnRef = useRef(true);
+  const engineRef = useRef<AliceVoiceEngine | null>(null);
+  if (!engineRef.current) {
+    engineRef.current = createAliceVoiceEngine({
+      isVoiceOn: () => voiceOnRef.current,
+      onLine: setSpeech,
+    });
+  }
+  const engine = engineRef.current;
+
   useEffect(() => {
     mountedRef.current = true;
-    try { setVoiceOn(localStorage.getItem('alice-voice') !== 'off'); } catch { /* ignore */ }
+    let on = true;
+    try { on = localStorage.getItem('alice-voice') !== 'off'; } catch { /* ignore */ }
+    voiceOnRef.current = on;
+    setVoiceOn(on);
+    return () => {
+      mountedRef.current = false;
+      engine.dispose();
+      if (petResetTimerRef.current) clearTimeout(petResetTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const stopAllAudio = () => {
-    Object.values(metadataCleanupRef.current).forEach((cleanup) => cleanup());
-    metadataCleanupRef.current = {};
-    Object.values(audioCache.current).forEach((audio) => {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.onended = null;
-    });
-  };
+
   const toggleVoice = () => {
     setVoiceOn((prev) => {
       const next = !prev;
+      voiceOnRef.current = next;
       try { localStorage.setItem('alice-voice', next ? 'on' : 'off'); } catch { /* ignore */ }
       if (!next) {
-        cancelSpeech();
+        engine.cancel();
         setIsThinking(false);
         setIsBusy(false);
         setIsPetted(false);
@@ -201,153 +67,14 @@ export default function CyberCat() {
       return next;
     });
   };
-  const ttsSpeak = (text: string) => {
-    if (!voiceOn || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    try {
-      const clean = text.replace(/\s+/g, ' ').replace(/[♪♫]/g, '').slice(0, 140);
-      if (!clean.trim()) return;
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      const utter = new SpeechSynthesisUtterance(clean);
-      utter.lang = 'zh-CN';
-      utter.rate = 1.05;
-      utter.pitch = 1.3;
-      const zhVoice = synth.getVoices().find((v) => v.lang.startsWith('zh'));
-      if (zhVoice) utter.voice = zhVoice;
-      synth.speak(utter);
-    } catch { /* TTS 失败不影响文字气泡 */ }
+
+  // 对话/语音播完后的统一收尾
+  const settle = () => {
+    if (!mountedRef.current) return;
+    setIsThinking(false);
+    setIsBusy(false);
   };
 
-  // 🎧 播放official voice语音：字幕停留时长跟着音频真实长度走，不再用写死的毫秒
-  const audioCache = useRef<Record<string, HTMLAudioElement>>({});
-  const metadataCleanupRef = useRef<Record<string, () => void>>({});
-  const ensureAudio = (src: string) => {
-    let audio = audioCache.current[src];
-    if (!audio) {
-      audio = new Audio(src);
-      audio.preload = 'metadata';
-      audioCache.current[src] = audio;
-    }
-    return audio;
-  };
-
-  const clearSpeechTimer = () => {
-    if (speechTimerRef.current) {
-      clearTimeout(speechTimerRef.current);
-      speechTimerRef.current = null;
-    }
-  };
-  const cancelSpeech = () => {
-    speechOpRef.current += 1;
-    clearSpeechTimer();
-    stopAllAudio();
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setSpeech(null);
-  };
-
-  // 说一句official voice：Japanese audio + 中文翻译，两者与音频一一对应，播完才收气泡
-  const speakVoice = (src: string, onDone?: () => void) => {
-    const line = VOICE[src];
-    if (!line) return;
-    const operation = ++speechOpRef.current;
-    stopAllAudio();
-    setSpeech({ main: line.jp, sub: line.cn });
-    clearSpeechTimer();
-    let settled = false;
-    const finish = () => {
-      if (settled || operation !== speechOpRef.current) return;
-      settled = true;
-      clearSpeechTimer();
-      if (!mountedRef.current) return;
-      setSpeech(null);
-      onDone?.();
-    };
-    // 先按实测时长兜底；元数据 / 播放结束事件到达后再校正
-    const arm = (sec: number) => {
-      clearSpeechTimer();
-      speechTimerRef.current = setTimeout(finish, sec * 1000 + 400);
-    };
-    arm(line.dur);
-    if (!voiceOn) return;
-    try {
-      const audio = ensureAudio(src);
-      const sync = () => {
-        delete metadataCleanupRef.current[src];
-        if (operation !== speechOpRef.current) return;
-        if (Number.isFinite(audio.duration) && audio.duration > 0) arm(audio.duration);
-      };
-      audio.onended = finish;
-      if (Number.isFinite(audio.duration) && audio.duration > 0) sync();
-      else {
-        const cleanup = () => audio.removeEventListener('loadedmetadata', sync);
-        metadataCleanupRef.current[src] = cleanup;
-        audio.addEventListener('loadedmetadata', sync, { once: true });
-      }
-      audio.currentTime = 0;
-      audio.play().catch(() => { /* 自动播放被拦截：字幕仍按元数据时长显示 */ });
-    } catch { /* ignore */ }
-  };
-
-  // 纯文字台词（AI 回复 / 报错提示）：没有日配，用浏览器 TTS 念中文，字幕与语音同为中文
-  const speakText = (text: string, duration = 8000, onDone?: () => void) => {
-    const operation = ++speechOpRef.current;
-    stopAllAudio();
-    setSpeech({ main: text });
-    clearSpeechTimer();
-    const displayDuration = Math.max(duration, Math.min(30000, text.length * 80));
-    speechTimerRef.current = setTimeout(() => {
-      if (!mountedRef.current || operation !== speechOpRef.current) return;
-      setSpeech(null);
-      onDone?.();
-    }, displayDuration);
-    ttsSpeak(text);
-  };
-
-  useEffect(() => () => {
-    mountedRef.current = false;
-    speechOpRef.current += 1;
-    requestOpRef.current += 1;
-    if (petResetTimerRef.current) clearTimeout(petResetTimerRef.current);
-    clearSpeechTimer();
-    stopAllAudio();
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-  }, []);
-
-  // 📅 日期彩蛋：生日 / 节日专属台词
-  const nextVoice = (pool: string[], poolName: string): string => {
-    const queue = voiceQueuesRef.current[poolName] ?? [];
-    if (queue.length === 0) voiceQueuesRef.current[poolName] = shuffle(pool);
-    const next = voiceQueuesRef.current[poolName].pop() as string;
-    lastVoiceRef.current = next;
-    return next;
-  };
-
-  // 邦吧咔邦是最高频语音：每两次普通语音触发一次（摸头/喂食/待机共享计数），且不会连续重复。
-  const nextFrequentVoice = (pool: string[], poolName: string): string => {
-    voiceTriggerCountRef.current += 1;
-    if (
-      voiceTriggerCountRef.current % 2 === 0
-      && lastVoiceRef.current !== VOICE_BANG
-    ) {
-      lastVoiceRef.current = VOICE_BANG;
-      return VOICE_BANG;
-    }
-    return nextVoice(pool, poolName);
-  };
-
-  const getSeasonKey = () => {
-    const now = new Date();
-    return `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  };
-  // 节日当天优先专属日配；教师节借用致谢线；其余日子走摸头池
-  const getSeasonVoice = (): string | null => {
-    const key = getSeasonKey();
-    return VOICE_SEASON[key] ?? (key === '09-10' ? VOICE_TEACHERS_DAY : null);
-  };
   useEffect(() => {
     if (!speech) {
       setDisplayedSpeech('');
@@ -374,7 +101,7 @@ export default function CyberCat() {
     setIsPetted(true);
     setCatMood('happy');
     setIsBusy(true);
-    speakVoice(getSeasonVoice() ?? nextFrequentVoice(POOL_PET, 'pet'), () => {
+    engine.speakVoice(pickSeasonVoice() ?? engine.pickVoice(POOL_PET, 'pet'), () => {
       setIsBusy(false);
       setIsPetted(false);
       setCatMood('idle');
@@ -387,137 +114,80 @@ export default function CyberCat() {
   };
 
   // --- 🍓 交互事件：喂草莓牛奶 ---
-  const handleFeed = async (e: React.MouseEvent) => {
+  // 先播一条官方语音（日文音频 + 中文翻译），播完再显示 AI 的回复，字幕全程跟着声音走
+  const handleFeed = (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止触发摸猫或拖拽
     if (isBusy) return;
-
     setShowInput(false); // 喂食时关掉输入框
     setIsThinking(true);
     setIsBusy(true);
     setCatMood('thinking');
-    cancelSpeech();
-    const requestOp = ++requestOpRef.current;
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: "I just gave you a bottle of sweet strawberry milk! How will you react?" }),
-      });
-
-      if (!res.ok) throw new Error('API Error');
-
-      const data = await res.json();
-      if (requestOp !== requestOpRef.current) return;
-      const reply = getReplyText(data);
-      setCatMood('happy');
-      // 先播放一条官方语音（日文音频 + 中文翻译），语音播完再显示 AI 的 English reply，
-      // 保证字幕全程都跟着正在播放的声音走
-      speakVoice(nextFrequentVoice(POOL_FEED, 'feed'), () => {
-        setCatMood('idle');
-        speakText(reply, 9000, () => {
-          setIsThinking(false);
-          setIsBusy(false);
+    engine.askAlice("I just gave you a bottle of sweet strawberry milk! How will you react?", {
+      onReply: (reply) => {
+        setCatMood('happy');
+        engine.speakVoice(engine.pickVoice(POOL_FEED, 'feed'), () => {
+          setCatMood('idle');
+          engine.speakText(reply, 9000, settle);
         });
-      });
-    } catch (error) {
-      if (requestOp !== requestOpRef.current) return;
-      setCatMood('idle');
-      speakText("草莓牛奶很好喝…但爱丽丝的线路卡壳了……", 4000, () => {
-        setIsThinking(false);
-        setIsBusy(false);
-      });
-    }
+      },
+      onError: () => {
+        setCatMood('idle');
+        engine.speakText("草莓牛奶很好喝…但爱丽丝的线路卡壳了……", 4000, settle);
+      },
+    });
   };
 
   // --- 💬 交互事件：发送聊天 ---
-  const handle聊天Submit = async (e: React.FormEvent) => {
+  const handle聊天Submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isBusy) return;
-    const requestOp = ++requestOpRef.current;
-
     const userMessage = inputValue;
     setInputValue('');
     setShowInput(false);
     setIsThinking(true);
     setIsBusy(true);
     setCatMood('thinking');
-    cancelSpeech();
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!res.ok) throw new Error('API Error');
-
-      const data = await res.json();
-      if (requestOp !== requestOpRef.current) return;
-      const reply = getReplyText(data);
-      setCatMood('idle');
-      speakText(reply, 8500, () => {
-        setIsThinking(false);
-        setIsBusy(false);
-      });
-    } catch (error) {
-      if (requestOp !== requestOpRef.current) return;
-      setCatMood('idle');
-      speakText("通信中断了！这一定是主线剧情里才会出现的强敌……", 4000, () => {
-        setIsThinking(false);
-        setIsBusy(false);
-      });
-    }
+    engine.askAlice(userMessage, {
+      onReply: (reply) => {
+        setCatMood('idle');
+        engine.speakText(reply, 8500, settle);
+      },
+      onError: () => {
+        setCatMood('idle');
+        engine.speakText("通信中断了！这一定是主线剧情里才会出现的强敌……", 4000, settle);
+      },
+    });
   };
 
   // --- ✨ 交互事件：快捷提问 ---
-  const handleQuick聊天 = async (promptText: string) => {
+  const handleQuick聊天 = (promptText: string) => {
     if (isBusy) return;
-    const requestOp = ++requestOpRef.current;
     setShowInput(false);
     setIsThinking(true);
     setIsBusy(true);
     setCatMood('thinking');
-    cancelSpeech();
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: promptText }),
-      });
-
-      if (!res.ok) throw new Error('API Error');
-
-      const data = await res.json();
-      if (requestOp !== requestOpRef.current) return;
-      const reply = getReplyText(data);
-      setCatMood('idle');
-      speakText(reply, 9000, () => {
-        setIsThinking(false);
-        setIsBusy(false);
-      });
-    } catch (error) {
-      if (requestOp !== requestOpRef.current) return;
-      setCatMood('idle');
-      speakText("Sensei，爱丽丝的大脑连接超时了……", 4000, () => {
-        setIsThinking(false);
-        setIsBusy(false);
-      });
-    }
+    engine.askAlice(promptText, {
+      onReply: (reply) => {
+        setCatMood('idle');
+        engine.speakText(reply, 9000, settle);
+      },
+      onError: () => {
+        setCatMood('idle');
+        engine.speakText("Sensei，爱丽丝的大脑连接超时了……", 4000, settle);
+      },
+    });
   };
 
   // --- ⏳ 随机挂机语录：接官方「大厅」日配，the subtitle follows the audio (no 中文 TTS fallback) ---
   useEffect(() => {
     const randomTalkInterval = setInterval(() => {
       if (!speech && !showInput && !isThinking && !isBusy && Math.random() > 0.8) {
-        speakVoice(nextFrequentVoice(POOL_IDLE, 'idle'));
+        engine.speakVoice(engine.pickVoice(POOL_IDLE, 'idle'));
       }
     }, 20000);
 
     return () => clearInterval(randomTalkInterval);
-  }, [speech, showInput, isThinking, isBusy]);
+  }, [speech, showInput, isThinking, isBusy, engine]);
 
   // 快捷问题预设
   const quickPrompts = [
@@ -582,11 +252,11 @@ export default function CyberCat() {
 
       {/* 🐈 猫咪本体 & 交互按钮区 */}
       <div className="relative">
-        
+
         {/* 🌈 情绪光环背景 (根据状态产生不同颜色的呼吸流光) */}
         <div className={`absolute inset-0 -m-4 rounded-full blur-2xl transition-all duration-1000 -z-10 opacity-70 ${
-          catMood === 'happy' 
-            ? 'bg-gradient-to-tr from-pink-400 to-rose-400 scale-110 animate-pulse' 
+          catMood === 'happy'
+            ? 'bg-gradient-to-tr from-pink-400 to-rose-400 scale-110 animate-pulse'
             : catMood === 'thinking'
             ? 'bg-gradient-to-tr from-indigo-400 via-purple-400 to-pink-400 scale-125 animate-spin-slow'
             : 'bg-gradient-to-tr from-indigo-500/10 to-indigo-300/10 opacity-0 group-hover:opacity-100 group-hover:scale-100'
@@ -735,8 +405,8 @@ export default function CyberCat() {
                 type="submit"
                 disabled={isThinking || !inputValue.trim()}
                 className={`rounded-full p-1.5 ml-1 flex items-center justify-center transition-colors shrink-0 ${
-                  isThinking || !inputValue.trim() 
-                    ? 'bg-gray-200 text-gray-400 dark:bg-slate-700' 
+                  isThinking || !inputValue.trim()
+                    ? 'bg-gray-200 text-gray-400 dark:bg-slate-700'
                     : 'bg-indigo-500 hover:bg-indigo-600 text-white'
                 }`}
               >

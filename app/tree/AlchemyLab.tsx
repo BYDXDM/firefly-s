@@ -362,7 +362,7 @@ export default function AlchemyLab({ posts = [], chatters = [], moments = [] }: 
     let isMounted = true;
     const fetchGitalkComments = async () => {
       try {
-        const fullRepo = siteConfig.giscusConfig?.repo || siteConfig.gitalkConfig?.repo || '';
+        const fullRepo = siteConfig.giscusConfig?.repo || '';
         const [owner, repo] = fullRepo.split('/');
         if (!owner || !repo) { if (isMounted) setRealWishes([]); return; }
         const targetLabel = `workshop-${currentMonthStr}`;
