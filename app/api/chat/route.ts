@@ -14,9 +14,45 @@ const ai = new GoogleGenAI({
   }
 });
 
+// 简单的内存频率限制：同一 IP 每分钟最多 10 次，防止 Gemini 配额被脚本刷爆
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+const requestLog = new Map<string, number[]>();
+
+function clientKey(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
+}
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const recent = (requestLog.get(key) || []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT_MAX) {
+    requestLog.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  requestLog.set(key, recent);
+  return false;
+}
+
+// 单条消息长度上限，防止超长 prompt 消耗 token
+const MAX_MESSAGE_LENGTH = 500;
+
 export async function POST(req: NextRequest) {
+  if (isRateLimited(clientKey(req))) {
+    return NextResponse.json({ error: '消息发送太频繁啦，休息一下再试试～' }, { status: 429 });
+  }
+
   try {
-    const { message } = await req.json();
+    const body = await req.json().catch(() => null);
+    const message = typeof body?.message === 'string' ? body.message.trim() : '';
+
+    if (!message) {
+      return NextResponse.json({ error: '消息不能为空' }, { status: 400 });
+    }
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return NextResponse.json({ error: `消息太长了，最多 ${MAX_MESSAGE_LENGTH} 字` }, { status: 400 });
+    }
 
     if (!apiKey) {
       console.error("❌ Gemini API Key missing in environment");
@@ -40,9 +76,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply });
 
-  } catch (error: any) {
+  } catch (error) {
+    // 内部错误细节只进服务端日志，对客户端固定通用文案
     console.error("🚨 Gemini API error:", error);
-    return NextResponse.json({ error: error.message || "运行时崩溃" }, { status: 500 });
+    return NextResponse.json({ error: "爱丽丝的通信模块出故障了，稍后再试一次吧！" }, { status: 500 });
   }
 }
 

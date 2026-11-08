@@ -92,7 +92,19 @@ export default function GlobalSearch() {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`);
         const data = await res.json();
-        setResults(data.items || []);
+        const items: SearchItem[] = data.items || [];
+        const query = q.trim().toLowerCase();
+        // 兜底二次过滤：服务端万一返回了未过滤的全量列表（如被中间层缓存），按标题/描述/标签再筛一次
+        setResults(
+          query
+            ? items.filter(
+                (item) =>
+                  item.title.toLowerCase().includes(query) ||
+                  item.description.toLowerCase().includes(query) ||
+                  (item.tags || []).some((t) => t.toLowerCase().includes(query)),
+              )
+            : items,
+        );
       } catch {
         setResults([]);
       } finally {

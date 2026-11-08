@@ -24,7 +24,8 @@ function fallbackDescription(description: string, content: string): string {
   return toPlainText(content).slice(0, 80);
 }
 
-export const dynamic = 'force-static';
+// 搜索依赖 q 参数，必须动态执行（force-static 会在构建期静态化，searchParams 恒为空）
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

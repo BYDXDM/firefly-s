@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 // 🌟 核心升级：引入 Next.js 现代统一解析流
 import { unified } from 'unified';
@@ -35,9 +36,19 @@ export async function generateStaticParams() {
     }));
 }
 
+// 与 admin/posts 路由同款的 slug 白名单：只允许字母数字、中文与连字符，杜绝 ../ 路径穿越
+const SLUG_RE = /^[a-zA-Z0-9\u4e00-\u9fa5]+(?:-[a-zA-Z0-9\u4e00-\u9fa5]+)*$/;
+
 async function getChatterData(slug: string) {
+  if (!SLUG_RE.test(slug)) notFound();
   const fullPath = path.join(process.cwd(), 'chatters', `${slug}.md`);
-  const fileContents = fs.readFileSync(fullPath, 'utf8');
+  let fileContents: string;
+  try {
+    fileContents = fs.readFileSync(fullPath, 'utf8');
+  } catch {
+    // 文件不存在（或不可读）时返回 404，而不是整页 500
+    notFound();
+  }
 
   let { data, content } = matter(fileContents);
 

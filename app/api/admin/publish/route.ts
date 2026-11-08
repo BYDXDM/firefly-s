@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
-import { getGithubConfig, githubCommitFile } from '../../../../lib/github';
+import { getGithubConfig, githubCommitFile, githubListDir } from '../../../../lib/github';
+
+// YAML 双引号标量：JSON.stringify 的产出本身就是合法的 YAML 标量，引号/反斜杠/换行都会被正确转义，
+// 防止标题里的特殊字符打挂 frontmatter 解析（tags 数组本来就用的它）
+function yamlScalar(value: unknown): string {
+  return JSON.stringify(typeof value === 'string' ? value : '');
+}
 
 export async function POST(req: Request) {
   try {
@@ -40,10 +46,10 @@ export async function POST(req: Request) {
       const formattedTags = Array.isArray(tags) ? tags : (tags ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
       
       fileContent = `---
-title: "${cleanTitle}"
+title: ${yamlScalar(cleanTitle)}
 date: "${displayDateString}"
-description: "${description || ''}"
-cover: "${cover || 'https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg'}"
+description: ${yamlScalar(description)}
+cover: ${yamlScalar(cover || 'https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg')}
 tags: ${JSON.stringify(formattedTags)}
 ---
 
@@ -60,12 +66,12 @@ ${content.trim()}
       const formattedTags = Array.isArray(tags) ? tags : (tags ? tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
       
       fileContent = `---
-title: "${cleanTitle}"
+title: ${yamlScalar(cleanTitle)}
 date: "${displayDateString}"
 tags: ${JSON.stringify(formattedTags)}
-mood: "${mood || '一般'}"
-cover: "${cover || 'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg'}"
-description: "${description || ''}"
+mood: ${yamlScalar(mood || '一般')}
+cover: ${yamlScalar(cover || 'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg')}
+description: ${yamlScalar(description)}
 ---
 
 ${content.trim()}
@@ -79,15 +85,30 @@ ${content.trim()}
       fileContent = `---
 id: "moment-${timestamp}"
 date: "${dateString}"
-location: "${location || ''}"
+location: ${yamlScalar(location)}
 images:
-${imageList.map(img => `  - '${img}'`).join('\n')}
+${imageList.map(img => `  - ${yamlScalar(img)}`).join('\n')}
 ---
 
 ${content.trim()}
 `;
     } else {
       return NextResponse.json({ error: '无效的发布类型' }, { status: 400 });
+    }
+
+    const repoDir = type === 'post' ? 'posts' : type === 'chatter' ? 'chatters' : 'moments';
+
+    // 同名内容不再静默覆盖：目标文件已存在时追加 -2/-3 序号
+    // （本地模式查目录，GitHub 模式查仓库目录，避免后发布者无声覆盖先发布者）
+    const ghCfg = getGithubConfig();
+    const existingNames = new Set(
+      ghCfg
+        ? (await githubListDir(ghCfg, repoDir)).map((f) => f.name)
+        : (fs.existsSync(targetDir) ? fs.readdirSync(targetDir) : []),
+    );
+    if (type === 'post' || type === 'chatter') {
+      const baseSlug = fileName.replace(/\.md$/, '');
+      for (let i = 2; existingNames.has(fileName); i++) fileName = `${baseSlug}-${i}.md`;
     }
 
     // 确保文件夹存在
@@ -102,9 +123,7 @@ ${content.trim()}
     }
 
     // 线上（Vercel 等只读文件系统）：提交到 GitHub 仓库，push 自动触发重新部署
-    const ghCfg = getGithubConfig();
     if (ghCfg) {
-      const repoDir = type === 'post' ? 'posts' : type === 'chatter' ? 'chatters' : 'moments';
       await githubCommitFile(ghCfg, `${repoDir}/${fileName}`, fileContent, `content: 发布${type === 'post' ? '文章' : type === 'chatter' ? '杂谈' : '说说'} ${fileName}`);
       return NextResponse.json({
         success: true,
