@@ -4,6 +4,16 @@ import path from 'path';
 import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
 import { getGithubConfig, githubCommitFile } from '../../../../lib/github';
 
+// MIME 白名单 + 大小上限：与 avatar 路由同款模式（review P1-3），
+// 不设限的话任意类型任意大小的文件都能进 public/uploads 并拿到 jsdelivr 公网 URL
+const UPLOAD_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB
+
 export async function POST(req: Request) {
   try {
     // 🔐 管理后台鉴权
@@ -14,6 +24,13 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json({ error: '没有上传文件' }, { status: 400 });
     }
+    const ext = UPLOAD_TYPES[file.type];
+    if (!ext) {
+      return NextResponse.json({ error: '仅支持 JPG / PNG / WebP / GIF 格式' }, { status: 400 });
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: '图片太大了，请控制在 5MB 以内' }, { status: 400 });
+    }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -23,7 +40,9 @@ export async function POST(req: Request) {
     if (cleanFileName.includes('..')) {
       return NextResponse.json({ error: '文件名非法' }, { status: 400 });
     }
-    const uniqueName = `${Date.now()}-${cleanFileName}`;
+    // 扩展名以白名单为准（丢弃原扩展名），杜绝 .html/.svg 之类载体借道获得可分发 URL
+    const baseName = cleanFileName.replace(/\.[^.]*$/, '') || 'image';
+    const uniqueName = `${Date.now()}-${baseName}.${ext}`;
 
     // 线上（Vercel 等只读文件系统）：提交到 GitHub 仓库 public/uploads，部署后即可访问
     const ghCfg = getGithubConfig();

@@ -14,7 +14,6 @@ import { ToastProvider } from '../components/ToastProvider';
 
 import LatestPostsCarousel from '../components/LatestPostsCarousel';
 import LatestChatterCarousel from '../components/LatestChatterCarousel';
-import DanmakuBackground from '../components/DanmakuBackground';
 import { getSortedPosts, getSortedChatters } from '../lib/content';
 
 export default function Home() {

@@ -18,7 +18,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const savedTheme = localStorage.getItem('blog-theme');
       // 如果没有记录，默认给深色模式（流萤飞舞）
       isDarkMode = savedTheme !== 'light';
-    } catch (e) {
+    } catch {
       // fallback in iframe
     }
     setIsDark(isDarkMode);
@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } else {
         root.classList.remove('dark');
       }
-    } catch (e) {}
+    } catch {}
   }, []);
 
   // 极其重要：监听 isDark 状态，只要它变了，立刻强制更新 html 标签，防止路由切换丢失
@@ -49,7 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setIsDark(newDark);
     try {
       localStorage.setItem('blog-theme', newDark ? 'dark' : 'light');
-    } catch (e) {}
+    } catch {}
   };
 
   return (

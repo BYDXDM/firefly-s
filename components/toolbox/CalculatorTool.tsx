@@ -79,7 +79,7 @@ export default function CalculatorTool() {
         const result = evaluateExpression(safeEq);
         setDisplay(String(parseFloat(result.toFixed(6))));
         setEquation('');
-      } catch (e) {
+      } catch {
         setDisplay('Error');
       }
     }

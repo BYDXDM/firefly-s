@@ -13,14 +13,14 @@ export default function GlobalSnow() {
       let isActive = false;
       try {
         isActive = document.body.classList.contains("winter-mode") || localStorage.getItem("winter-mode") === "true";
-      } catch (e) {
+      } catch {
         isActive = document.body.classList.contains("winter-mode");
       }
       setIsWinter(isActive);
       if (isActive) {
         try {
           document.body.classList.add("winter-mode");
-        } catch (e) {}
+        } catch {}
       }
     };
 

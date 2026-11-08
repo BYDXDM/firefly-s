@@ -25,6 +25,16 @@ function isRateLimited(key: string): boolean {
 /** 会话校验：带 X-Admin-Passkey 头查询当前密钥是否有效 */
 export async function GET(req: NextRequest) {
   const authRequired = isAuthRequired();
+
+  // GET 也在做密钥比对并回传结果，不设限就成了绕过 POST 限流的暴力猜解通道；
+  // 与 POST 共用同一份 attemptLog（10 次/5 分钟），混着打也一样被拦
+  if (authRequired && isRateLimited(clientKey(req))) {
+    return NextResponse.json(
+      { authenticated: false, authRequired, error: '尝试次数过多，请 5 分钟后再试' },
+      { status: 429 }
+    );
+  }
+
   const provided = req.headers.get('x-admin-passkey') || '';
   const authenticated = authRequired
     ? safeEqual(process.env.ADMIN_PASSKEY as string, provided)

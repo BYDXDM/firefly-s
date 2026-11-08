@@ -11,9 +11,10 @@ import {
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { useAdminAuth } from '../../components/AdminAuth';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkHtml from 'remark-html';
+import { renderMarkdown } from '../../lib/markdown';
+// 与前台详情页同一套高亮/公式样式，保证“预览即所得”
+import 'highlight.js/styles/atom-one-dark.css';
+import 'katex/dist/katex.min.css';
 import { siteConfig } from '../../siteConfig';
 import { detectVisitorLocation } from '../../lib/visitorGeo';
 
@@ -52,22 +53,19 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  // 实时编译 Markdown
+  // 实时编译 Markdown（与前台同一渲染管线，含消毒，预览即所得）
   useEffect(() => {
     if (activeTab === 'moment') return; // 说说不需要复杂的 md 渲染
-    
+
     const processMarkdown = async () => {
       try {
-        const file = await unified()
-          .use(remarkParse)
-          .use(remarkHtml)
-          .process(content || '');
-        setPreviewHtml(String(file));
+        const { html } = await renderMarkdown(content || '');
+        setPreviewHtml(html);
       } catch (error) {
         console.error('Markdown 解析失败:', error);
       }
     };
-    
+
     const timer = setTimeout(() => processMarkdown(), 300);
     return () => clearTimeout(timer);
   }, [content, activeTab]);

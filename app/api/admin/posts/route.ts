@@ -4,6 +4,7 @@ import path from 'path';
 import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
 import { getGithubConfig, githubCommitFile, githubDeleteFile } from '../../../../lib/github';
 import { getSortedPosts, readRawMarkdown } from '../../../../lib/content';
+import { yamlScalar } from '../../../../lib/frontmatter';
 
 // 文章 slug 只允许字母数字、中文与连字符
 const SLUG_RE = /^[a-zA-Z0-9\u4e00-\u9fa5]+(?:-[a-zA-Z0-9\u4e00-\u9fa5]+)*$/;
@@ -12,12 +13,14 @@ function str(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+// 与 publish 同款转义：title/description/cover/date 全部经 yamlScalar，
+// 引号/反斜杠/换行不再能打挂 frontmatter 解析
 function buildMarkdown(post: { title: string; date: string; description: string; cover: string; tags: string[]; content: string }): string {
   return `---
-title: "${post.title.replace(/"/g, '\\"')}"
-date: "${post.date}"
-description: "${post.description.replace(/"/g, '\\"')}"
-cover: "${post.cover}"
+title: ${yamlScalar(post.title)}
+date: ${yamlScalar(post.date)}
+description: ${yamlScalar(post.description)}
+cover: ${yamlScalar(post.cover)}
 tags: ${JSON.stringify(post.tags)}
 ---
 

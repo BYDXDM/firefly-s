@@ -2,14 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm'; // 🌟 引入 GFM 以支持 ~~删除线~~
-import remarkMath from 'remark-math';
-import remarkRehype from 'remark-rehype';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeKatex from 'rehype-katex';
-import rehypeStringify from 'rehype-stringify';
+import { renderMarkdown } from '../../lib/markdown';
 
 // 引入高亮主题
 import 'highlight.js/styles/atom-one-dark.css';
@@ -38,47 +31,11 @@ export default async function AboutPage() {
 
   try {
     const fileContents = fs.readFileSync(fullPath, 'utf8');
-    // 🌟 改为 let，以便进行文本预清洗
-    let { data, content } = matter(fileContents);
+    const { data, content } = matter(fileContents);
     if (data.cover) coverImage = data.cover;
 
-    // ==========================================
-    // 🌟 解析前物理清洗区
-    // ==========================================
-    // 1. 强行给没有语言标记的代码块加上 cpp 标签，防止侦测失败
-    content = content.replace(/^```\s*$/gm, '```cpp');
-    // 2. 强行修复数字列表缺少空格导致无法渲染为列表的 Bug (1.百度 -> 1. 百度)
-    content = content.replace(/^(\s*\d+)\.([^ \n])/gm, '$1. $2');
-
-    // 3. 🌟 拯救被 Markdown 引擎吞噬的“连续空行” (同步前台展示页的阵法)
-    content = content.replace(/\r\n/g, '\n').replace(/^[ \t]+$/gm, '');
-    const blocks = content.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
-    content = blocks.map((block, index) => {
-      if (index % 2 === 1) return block; // 代码块绝对不碰
-      return block.replace(/\n{3,}/g, (match) => {
-        const brCount = match.length - 2;
-        return '\n\n' + '<br>'.repeat(brCount) + '\n\n';
-      });
-    }).join('');
-    // ==========================================
-
-    const processedContent = await unified()
-      .use(remarkParse)
-      .use(remarkGfm) // 🌟 挂载 GFM 解析
-      .use(remarkMath)
-      .use(remarkRehype, { allowDangerousHtml: true })
-      // 🌟 核心修复：开启自动语言侦测，并限制语言白名单！
-      // @ts-ignore
-      .use(rehypeHighlight, {
-        detect: true,
-        ignoreMissing: true,
-        subset: ['cpp', 'c', 'python', 'java', 'javascript', 'typescript', 'go', 'rust', 'bash', 'json', 'html', 'css', 'sql', 'xml']
-      })
-      .use(rehypeKatex)
-      .use(rehypeStringify, { allowDangerousHtml: true })
-      .process(content);
-
-    contentHtml = processedContent.toString();
+    // 清洗 + 消毒 + 高亮 + 公式统一走 lib/markdown
+    contentHtml = (await renderMarkdown(content)).html;
   } catch (e) {
     console.error("读取 about.md 失败", e);
   }

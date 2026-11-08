@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, ListMusic, Mic2, Disc3, Volume2, VolumeX, Search, X, MessageSquare } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, Disc3, Volume2, VolumeX, Search, X, MessageSquare } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { useMusic } from '../../components/MusicProvider';
@@ -74,9 +74,9 @@ export default function MusicClient() {
     let idx = parsedLyrics.findIndex((l: any) => l.time > currentTime) - 1;
     if (idx === -2) idx = parsedLyrics.length - 1;
     return Math.max(0, idx);
-    // 用整数秒做依赖：currentTime 每秒才变一次（Provider 已节流），
-    // 同时避免歌词索引微小变化触发 smooth 滚动抖动
-  }, [Math.floor(currentTime), parsedLyrics]);
+    // currentTime 每 1 秒才节流更新一次（Provider 已节流），
+    // 依赖它等价于原先的整秒触发，也不会引发歌词滚动抖动
+  }, [currentTime, parsedLyrics]);
 
   useEffect(() => {
     if (activeLyricRef.current && lyricContainerRef.current && activeTab === 'lyrics') {

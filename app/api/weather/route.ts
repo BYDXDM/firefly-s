@@ -122,7 +122,7 @@ const REQUEST_INIT: RequestInit = {
   cache: 'no-store',
 };
 
-async function fetchFromQWeather(token: string): Promise<NowWeather | null> {
+async function fetchFromQWeather(): Promise<NowWeather | null> {
   // 和风天气 API Host 因账号类型而异，两个都试一遍（101281601 = 东莞）
   const hosts = ['https://api.qweather.com', 'https://devapi.qweather.com'];
   for (const host of hosts) {
@@ -178,7 +178,7 @@ export async function GET() {
   const token = process.env.QWEATHER_KEY;
 
   const now =
-    (token && await fetchFromQWeather(token)) ||
+    (token && await fetchFromQWeather()) ||
     await fetchFromOpenMeteo() ||
     await fetchFromWttr();
 

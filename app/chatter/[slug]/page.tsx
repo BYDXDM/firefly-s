@@ -4,15 +4,7 @@ import matter from 'gray-matter';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-// 🌟 核心升级：引入 Next.js 现代统一解析流
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm'; // 🌟 挂载 GFM 支持删除线
-import remarkMath from 'remark-math';
-import remarkRehype from 'remark-rehype';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeStringify from 'rehype-stringify';
-import rehypeKatex from 'rehype-katex';
+import { renderMarkdown } from '../../../lib/markdown';
 
 // 🌟 引入神仙代码高亮主题（Atom One Dark）
 import 'highlight.js/styles/atom-one-dark.css';
@@ -50,60 +42,14 @@ async function getChatterData(slug: string) {
     notFound();
   }
 
-  let { data, content } = matter(fileContents);
+  const { data, content } = matter(fileContents);
 
-  // ==========================================
-  // 🌟 前台渲染清洗区：终极防吞换行 + 安全保护补丁！（从 Post 完美移植）
-  // ==========================================
-
-  // 1. 基础物理清洗：统一换行符，干掉幽灵占位符和纯空格废行
-  content = content.replace(/\r\n/g, '\n');
-  content = content.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  content = content.replace(/^[ \t]+$/gm, '');
-
-  // 2. 强行修复数字列表缺少空格导致无法渲染为列表的 Bug (1.百度 -> 1. 百度)
-  content = content.replace(/^(\s*\d+)\.([^ \n])/gm, '$1. $2');
-
-  // 3. 🌟 空间隔离防吞换行阵法（绝对不伤代码块！）
-  const blocks = content.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
-  content = blocks.map((block, index) => {
-    // 奇数索引是代码块
-    if (index % 2 === 1) {
-      // 🌟 安全注入：如果代码块没写明语言，只在开头安全补上 cpp，绝不破坏结尾！
-      if (/^```[ \t]*(\n|$)/.test(block)) {
-         return block.replace(/^```[ \t]*/, '```cpp');
-      }
-      return block;
-    }
-
-    // 偶数索引是正文。把 3 个以上的连续 \n 替换为真实的 <br> 标签。
-    // （3 个 \n 相当于中间空了 1 行真正的空白）
-    return block.replace(/\n{3,}/g, (match) => {
-      const brCount = match.length - 2;
-      return '\n\n' + '<br>'.repeat(brCount) + '\n\n';
-    });
-  }).join('');
-
-  // ==========================================
-
-  const processedContent = await unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkMath)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    // @ts-ignore
-    .use(rehypeHighlight, {
-      detect: true,
-      ignoreMissing: true,
-      subset: ['cpp', 'c', 'python', 'java', 'javascript', 'typescript', 'go', 'rust', 'bash', 'json', 'html', 'css', 'sql', 'xml']
-    })
-    .use(rehypeKatex)
-    .use(rehypeStringify, { allowDangerousHtml: true })
-    .process(content);
+  // 清洗 + 消毒 + 高亮 + 公式统一走 lib/markdown
+  const { html } = await renderMarkdown(content);
 
   return {
     slug,
-    contentHtml: processedContent.toString(),
+    contentHtml: html,
     title: data.title || '碎片记录',
     date: data.date,
     mood: data.mood,
@@ -115,7 +61,7 @@ async function getChatterData(slug: string) {
 function getRecentChatters(currentSlug: string) {
   const chattersDirectory = path.join(process.cwd(), 'chatters');
   let fileNames: string[] = [];
-  try { fileNames = fs.readdirSync(chattersDirectory).filter(f => f.endsWith('.md')); } catch(e) {}
+  try { fileNames = fs.readdirSync(chattersDirectory).filter(f => f.endsWith('.md')); } catch {}
   if (!fileNames) return [];
 
   return fileNames.map(f => {

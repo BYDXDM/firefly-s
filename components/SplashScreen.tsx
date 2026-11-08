@@ -22,7 +22,7 @@ export default function SplashScreen() {
     let hasSeenSplash = false;
     try {
       hasSeenSplash = sessionStorage.getItem('hasSeenSplash') === 'true';
-    } catch (e) {
+    } catch {
       // If sessionStorage access is denied (e.g., in a sandboxed iframe), fall back to skipping splash to prevent a blank page
       hasSeenSplash = true;
     }
@@ -40,7 +40,7 @@ export default function SplashScreen() {
       // 容错处理：确保直接访问时类名存在
       try {
         document.documentElement.classList.add('splash-seen');
-      } catch (e) {}
+      } catch {}
     }
   }, []);
 
@@ -48,13 +48,13 @@ export default function SplashScreen() {
     setShow(false);
     try {
       sessionStorage.setItem('hasSeenSplash', 'true');
-    } catch (e) {}
+    } catch {}
 
     // 【核心解封】：动画快结束时，给 html 加上类名，CSS 会自动把内容显示出来
     setTimeout(() => {
       try {
         document.documentElement.classList.add('splash-seen');
-      } catch (e) {}
+      } catch {}
     }, 500);
   };
 

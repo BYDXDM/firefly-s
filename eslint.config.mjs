@@ -8,9 +8,10 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "react-hooks/rules-of-hooks": "off",
-      "react-hooks/exhaustive-deps": "off",
+      // 质量防线（review P1-5）：条件 hook 这类运行期炸弹零容忍；另外两条先降为 warn 逐步收敛
+      "@typescript-eslint/no-unused-vars": "warn",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "@next/next/no-img-element": "off",
       "react/no-unescaped-entities": "off",
       "react-hooks/set-state-in-effect": "off",

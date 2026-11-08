@@ -7,7 +7,6 @@ export default function NotFound() {
       <Navbar />
       <div className="w-full max-w-2xl mx-auto mt-32 mb-20 px-6 relative z-10 flex flex-col items-center text-center">
         {/* 爱丽丝立绘 */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/alice-sprite.webp"
           alt="天童爱丽丝"

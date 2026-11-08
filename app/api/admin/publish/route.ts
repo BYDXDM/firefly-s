@@ -3,12 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { isAuthorized, unauthorizedResponse } from '../../../../lib/adminAuth';
 import { getGithubConfig, githubCommitFile, githubListDir } from '../../../../lib/github';
-
-// YAML 双引号标量：JSON.stringify 的产出本身就是合法的 YAML 标量，引号/反斜杠/换行都会被正确转义，
-// 防止标题里的特殊字符打挂 frontmatter 解析（tags 数组本来就用的它）
-function yamlScalar(value: unknown): string {
-  return JSON.stringify(typeof value === 'string' ? value : '');
-}
+import { yamlScalar } from '../../../../lib/frontmatter';
 
 export async function POST(req: Request) {
   try {

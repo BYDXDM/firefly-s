@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// 🌟 引入了新的图标 Camera, Users, Sprout
-import { MessageCircleHeart, ChevronLeft, ChevronRight, BookOpen, ScrollText, Coffee, FileText, Sparkles, Award, Shield, X, Grid, LockKeyhole, Camera, Users, Sprout } from 'lucide-react';
+// 🌟 引入了新的图标 Camera, Users
+import { MessageCircleHeart, ChevronLeft, ChevronRight, BookOpen, ScrollText, Coffee, FileText, Sparkles, Award, Shield, X, Grid, LockKeyhole, Camera, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // 🌟 引入定制的无干扰留言板组件与站点配置
@@ -203,7 +203,7 @@ export default function AlchemyLab({ posts = [], chatters = [], moments = [] }: 
         const d = new Date(dateVal);
         if (isNaN(d.getTime())) return null;
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      } catch (e) { return null; }
+      } catch { return null; }
     };
 
     const todayString = parseDateStr(new Date());
@@ -377,7 +377,7 @@ export default function AlchemyLab({ posts = [], chatters = [], moments = [] }: 
           }
         }
         if (isMounted) setRealWishes([]);
-      } catch (err) { if (isMounted) setRealWishes([]); }
+      } catch { if (isMounted) setRealWishes([]); }
     };
     fetchGitalkComments();
     return () => { isMounted = false; };
